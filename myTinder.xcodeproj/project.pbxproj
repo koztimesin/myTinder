@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		866C8B04308247BA00D50F82 /* Secrets.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 866C8B03308247BA00D50F82 /* Secrets.xcconfig */; };
+		866C8B0E3082703100D50F82 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 866C8B0D3082703100D50F82 /* Supabase */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		866C8AE73082447E00D50F82 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -27,11 +32,25 @@
 		866C8AD93082447D00D50F82 /* myTinder.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = myTinder.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		866C8AE63082447E00D50F82 /* myTinderTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = myTinderTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		866C8AF03082447E00D50F82 /* myTinderUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = myTinderUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		866C8B03308247BA00D50F82 /* Secrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		866C8B06308249D500D50F82 /* Exceptions for "myTinder" folder in "myTinder" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 866C8AD83082447D00D50F82 /* myTinder */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		866C8ADB3082447D00D50F82 /* myTinder */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				866C8B06308249D500D50F82 /* Exceptions for "myTinder" folder in "myTinder" target */,
+			);
 			path = myTinder;
 			sourceTree = "<group>";
 		};
@@ -52,6 +71,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				866C8B0E3082703100D50F82 /* Supabase in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -75,6 +95,7 @@
 		866C8AD03082447D00D50F82 = {
 			isa = PBXGroup;
 			children = (
+				866C8B03308247BA00D50F82 /* Secrets.xcconfig */,
 				866C8ADB3082447D00D50F82 /* myTinder */,
 				866C8AE93082447E00D50F82 /* myTinderTests */,
 				866C8AF33082447E00D50F82 /* myTinderUITests */,
@@ -112,6 +133,7 @@
 			);
 			name = myTinder;
 			packageProductDependencies = (
+				866C8B0D3082703100D50F82 /* Supabase */,
 			);
 			productName = myTinder;
 			productReference = 866C8AD93082447D00D50F82 /* myTinder.app */;
@@ -195,6 +217,9 @@
 			);
 			mainGroup = 866C8AD03082447D00D50F82;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				866C8B0C3082703100D50F82 /* XCRemoteSwiftPackageReference "supabase-swift" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 866C8ADA3082447D00D50F82 /* Products */;
 			projectDirPath = "";
@@ -212,6 +237,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				866C8B04308247BA00D50F82 /* Secrets.xcconfig in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -271,6 +297,7 @@
 /* Begin XCBuildConfiguration section */
 		866C8AF83082447E00D50F82 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 866C8B03308247BA00D50F82 /* Secrets.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -335,6 +362,7 @@
 		};
 		866C8AF93082447E00D50F82 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 866C8B03308247BA00D50F82 /* Secrets.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -400,11 +428,13 @@
 				DEVELOPMENT_TEAM = 6LGMM5CU3D;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = myTinder/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -432,11 +462,13 @@
 				DEVELOPMENT_TEAM = 6LGMM5CU3D;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = myTinder/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -578,6 +610,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		866C8B0C3082703100D50F82 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase/supabase-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.5.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		866C8B0D3082703100D50F82 /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 866C8B0C3082703100D50F82 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 866C8AD13082447D00D50F82 /* Project object */;
 }
