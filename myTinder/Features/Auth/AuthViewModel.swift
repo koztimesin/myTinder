@@ -31,6 +31,51 @@ final class AuthViewModel {
         self.auth = auth
     }
     
+    
+}
+
+extension AuthViewModel: AuthViewModelProtocol {
+    
+    var modeState: Mode {
+        get {
+            mode
+        }
+        set {
+            mode = newValue
+        }
+    }
+    
+    var emailText: String {
+        get {
+            email
+        }
+        set {
+            email = newValue
+        }
+    }
+    
+    var passwordText: String {
+        get {
+            password
+        }
+        set {
+            password = newValue
+        }
+    }
+    
+    
+    var isLoadingState: Bool {
+        isLoading
+    }
+    
+    var errorMessageText: String? {
+        errorMessage
+    }
+    
+    var infoMessageText: String? {
+        infoMessage
+    }
+    
     var canSubmit: Bool {
         email.contains("@") && password.count >= 6 && !isLoading
     }
@@ -61,4 +106,18 @@ final class AuthViewModel {
             errorMessage = error.localizedDescription
         }
     }
+}
+
+protocol AuthViewModelProtocol {
+    
+    
+    var modeState: AuthViewModel.Mode { get set }
+    var emailText: String { get set }
+    var passwordText: String { get set }
+    var canSubmit: Bool { get }
+    var isLoadingState: Bool { get }
+    var errorMessageText: String? { get }
+    var infoMessageText: String? { get }
+    
+    func submit() async
 }

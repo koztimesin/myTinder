@@ -13,6 +13,7 @@ final class AppContainer {
     private let supabase = SupabaseClient(supabaseURL: AppConfig.supabaseURL, supabaseKey: AppConfig.supabaseKey)
     
     let authRepository: AuthRepositoryProtocol
+    lazy var profileRepository: ProfileRepositoryProtocol = SupabaseProfileRepository(client: supabase)
     
     init() {
         authRepository = AuthRepository(client: supabase)
