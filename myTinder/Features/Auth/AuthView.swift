@@ -7,12 +7,12 @@
 
 import SwiftUI
 
-struct AuthView: View {
+struct AuthView<ViewModel: AuthViewModelProtocol>: View {
     
-    @State var viewModel: AuthViewModel
+    @State private var viewModel: ViewModel
     
-    init(viewModel: AuthViewModel) {
-        _viewModel = State(initialValue: viewModel)
+    init(viewModel: ViewModel) {
+        self.viewModel = viewModel
     }
     
     var body: some View {
@@ -22,21 +22,21 @@ struct AuthView: View {
             Text("myTinder")
                 .font(.largeTitle.bold())
             
-            Picker("", selection: $viewModel.mode) {
+            Picker("", selection: $viewModel.modeState) {
                 Text("Вход").tag(AuthViewModel.Mode.signIn)
                 Text("Регистрация").tag(AuthViewModel.Mode.signUp)
             }
             .pickerStyle(.segmented)
             
-            TextField("Email", text: $viewModel.email)
+            TextField("Email", text: $viewModel.emailText)
                 .textContentType(.emailAddress)
                 .keyboardType(.emailAddress)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .textFieldStyle(.roundedBorder)
             
-            SecureField("Пароль (от 6 символов)", text: $viewModel.password)
-                .textContentType(viewModel.mode == .signUp ? .newPassword : .password)
+            SecureField("Пароль (от 6 символов)", text: $viewModel.passwordText)
+                .textContentType(viewModel.modeState == .signUp ? .newPassword : .password)
                 .textFieldStyle(.roundedBorder)
             
             errorMessageView
@@ -63,10 +63,10 @@ struct AuthView: View {
     private var signInOrCreateButtonLabel: some View {
         
         Group {
-            if viewModel.isLoading {
+            if viewModel.isLoadingState {
                 ProgressView()
             } else {
-                Text(viewModel.mode == .signIn ? "Войти" : "Создать аккаунт")
+                Text(viewModel.modeState == .signIn ? "Войти" : "Создать аккаунт")
             }
         }
         .frame(maxWidth: .infinity)
@@ -75,7 +75,7 @@ struct AuthView: View {
     @ViewBuilder
     private var errorMessageView: some View {
         
-        if let error = viewModel.errorMessage {
+        if let error = viewModel.errorMessageText {
             Text(error)
                 .foregroundStyle(.red)
                 .font(.footnote)
@@ -85,7 +85,7 @@ struct AuthView: View {
     @ViewBuilder
     private var infoMessageView: some View {
         
-        if let info = viewModel.infoMessage {
+        if let info = viewModel.infoMessageText {
             Text(info)
                 .foregroundStyle(.secondary)
                 .font(.footnote)

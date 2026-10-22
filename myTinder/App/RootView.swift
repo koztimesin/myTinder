@@ -23,14 +23,8 @@ struct RootView: View {
             AuthView(viewModel: AuthViewModel(auth: container.authRepository))
             
         case .signedIn(let user):
-            VStack(spacing: 16) {
-                Text("Вы вошли как \(user.email ?? "default")")
-                Button("Выйти") {
-                    Task {
-                        await session.signOut()
-                    }
-                }
-            }
+            ProfileGateView(session: session, container: container)
+                .id(user.id)
         }
     }
 }

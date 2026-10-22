@@ -14,9 +14,7 @@ struct myTinderApp: App {
     @State private var session: SessionStore
 
     init() {
-//        let appContainer = AppContainer()
         _session = State(initialValue: SessionStore(authRepository: appContainer.authRepository))
-//        self.appContainer = appContainer
     }
 
     var body: some Scene {
