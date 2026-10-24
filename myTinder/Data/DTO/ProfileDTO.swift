@@ -86,6 +86,13 @@ enum DateOnly {
         f.dateFormat = "yyyy-MM-dd"
         return f
     }()
+    
+    /// Переносит выбранную в `DatePicker` дату в UTC, сохраняя день, месяц и год.
+    /// Без этого в часовых поясах восточнее UTC день «съезжает» на сутки назад.
+    static func utcDate(fromLocal date: Date, calendar: Calendar = .current) -> Date {
+        let parts = calendar.dateComponents([.year, .month, .day], from: date)
+        return Calendar.utc.date(from: parts) ?? date
+    }
 }
 
 extension ProfileDTO {

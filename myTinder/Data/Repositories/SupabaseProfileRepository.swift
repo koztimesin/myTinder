@@ -8,6 +8,16 @@
 import Foundation
 import Supabase
 
+/// Коды ошибок PostgreSQL, которые приходят от Supabase в `PostgrestError.code`
+enum PostgresErrorCode {
+    
+    /// Нарушена уникальность (например, профиль с таким `id` уже существует)
+    static let uniqueViolation = "23505"
+    
+    /// Не прошёл проверку (например, возраст меньше 18)
+    static let checkViolation = "23514"
+}
+
 struct SupabaseProfileRepository {
     
     let client: SupabaseClient
@@ -16,11 +26,16 @@ struct SupabaseProfileRepository {
         try await client.auth.session.user.id
     }
     
-    private static func map(_ e: PostgrestError) -> Error {
-        if e.code == "23505" { return ProfileError.alreadyExists }
-        if e.code == "23514" { return ProfileError.underage }
+    private static func map(_ error: PostgrestError) -> Error {
         
-        return e
+        switch error.code {
+            
+        case PostgresErrorCode.uniqueViolation: ProfileError.alreadyExists
+            
+        case PostgresErrorCode.checkViolation: error.message.contains("birth_date") ? ProfileError.underage : error
+            
+        default: error
+        }
     }
 }
 
