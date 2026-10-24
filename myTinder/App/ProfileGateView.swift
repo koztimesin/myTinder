@@ -10,11 +10,13 @@ import SwiftUI
 struct ProfileGateView: View {
     
     let session: SessionStore
+    let container: AppContainer
     @State private var store: ProfileStore
     
     init(session: SessionStore, container: AppContainer) {
         self.session = session
         _store = State(initialValue: ProfileStore(profiles: container.profileRepository))
+        self.container = container
     }
     
     var body: some View {
@@ -25,7 +27,12 @@ struct ProfileGateView: View {
                 ProgressView()
                 
             case .needsProfile:
-                Text("Онбординг")
+                OnboardingView(
+                    viewModel: container.makeOnboardingViewModel(
+                        onCreated: { store.didCreate($0) },
+                        onSignOut: { Task { await session.signOut() } }
+                    )
+                )
                 
             case .ready(let profile):
                 VStack(spacing: 16) {

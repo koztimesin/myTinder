@@ -14,8 +14,22 @@ final class AppContainer {
     
     let authRepository: AuthRepositoryProtocol
     lazy var profileRepository: ProfileRepositoryProtocol = SupabaseProfileRepository(client: supabase)
+    lazy var photoRepository: PhotoRepositoryProtocol = SupabasePhotoRepository(client: supabase)
     
     init() {
         authRepository = AuthRepository(client: supabase)
+    }
+    
+    @MainActor
+    func makeOnboardingViewModel(
+        onCreated: @escaping @MainActor (Profile) -> Void,
+        onSignOut: @escaping @MainActor () -> Void
+    ) -> OnboardingViewModel {
+        OnboardingViewModel(
+            profiles: profileRepository,
+            photoRepository: photoRepository,
+            onCreated: onCreated,
+            onSignOut: onSignOut
+        )
     }
 }
