@@ -35,16 +35,13 @@ struct ProfileGateView: View {
                 )
                 
             case .ready(let profile):
-                VStack(spacing: 16) {
-                    
-                    Text("Привет, \(profile.name)")
-                    
-                    Button("Выйти") {
-                        Task {
-                            await session.signOut()
-                        }
-                    }
-                }
+                EditProfileView(
+                    viewModel: container.makeEditProfileViewModel(
+                        profile: profile,
+                        onUpdated: { store.didUpdate($0) },
+                        onSignOut: { Task { await session.signOut() } }
+                    )
+                )
                 
             case .failed(let message):
                 VStack(spacing: 16) {

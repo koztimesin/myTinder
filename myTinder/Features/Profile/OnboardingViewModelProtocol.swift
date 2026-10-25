@@ -19,8 +19,8 @@ protocol OnboardingViewModelProtocol: Observable, AnyObject, Sendable {
     var gender: Gender? { get set }
     /// Выбранный вариант «Кого ищете» или `nil`, пока пользователь не выбрал.
     var interest: InterestOption? { get set }
-    /// Выбранные фото, первое главное.
-    var photos: [LocalPhoto] { get }
+    /// Плитки выбранных фото в порядке показа, первая главная.
+    var tiles: [PhotoTileViewModel] { get }
     /// Идёт создание профиля.
     var isSubmitting: Bool { get }
     /// Сколько фото уже загружено.
@@ -40,10 +40,6 @@ protocol OnboardingViewModelProtocol: Observable, AnyObject, Sendable {
     
     /// Обрабатывает фото, выбранные в `PhotosPicker`.
     func addPhotos(from items: [PhotosPickerItem]) async
-    /// Убирает фото из списка.
-    func removePhoto(_ photo: LocalPhoto)
-    /// Делает фото главным.
-    func makeMain(_ photo: LocalPhoto)
     /// Проверяет форму и создаёт профиль.
     func submit() async
     /// Выходит из аккаунта.

@@ -30,4 +30,19 @@ enum InterestOption: CaseIterable, Identifiable {
         case .everyone: [.male, .female]
         }
     }
+    
+    /// Определяет вариант по сохранённому списку полов.
+    /// - Returns: `nil`, если набор не похож ни на один вариант (например, пустой).
+    init?(genders: [Gender]) {
+        let set = Set(genders)
+        if set == [.male] {
+            self = .male
+        } else if set == [.female] {
+            self = .female
+        } else if set == [.male, .female] {
+            self = .everyone
+        } else {
+            return nil
+        }
+    }
 }

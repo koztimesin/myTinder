@@ -15,6 +15,7 @@ final class AppContainer {
     let authRepository: AuthRepositoryProtocol
     lazy var profileRepository: ProfileRepositoryProtocol = SupabaseProfileRepository(client: supabase)
     lazy var photoRepository: PhotoRepositoryProtocol = SupabasePhotoRepository(client: supabase)
+    lazy var photoURLProvider: PhotoURLProviderProtocol = PhotoURLCache(repository: photoRepository)
     
     init() {
         authRepository = AuthRepository(client: supabase)
@@ -29,6 +30,27 @@ final class AppContainer {
             profiles: profileRepository,
             photoRepository: photoRepository,
             onCreated: onCreated,
+            onSignOut: onSignOut
+        )
+    }
+    
+    /// Собирает модель экрана «Мой профиль».
+    /// - Parameters:
+    ///   - profile: текущий профиль.
+    ///   - onUpdated: что делать после успешного изменения профиля.
+    ///   - onSignOut: что делать при выходе.
+    @MainActor
+    func makeEditProfileViewModel(
+        profile: Profile,
+        onUpdated: @escaping @MainActor (Profile) -> Void,
+        onSignOut: @escaping @MainActor () -> Void
+    ) -> EditProfileViewModel {
+        EditProfileViewModel(
+            profile: profile,
+            profiles: profileRepository,
+            photoRepository: photoRepository,
+            urlProvider: photoURLProvider,
+            onUpdated: onUpdated,
             onSignOut: onSignOut
         )
     }

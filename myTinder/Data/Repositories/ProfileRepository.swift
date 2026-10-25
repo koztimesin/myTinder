@@ -36,9 +36,7 @@ struct NewProfile: Sendable {
 
 struct ProfileChanges: Sendable {
     
-    var name: String
     var bio: String?
-    var gender: Gender
     var interestedIn: [Gender]
     var photoPaths: [String]
 }
