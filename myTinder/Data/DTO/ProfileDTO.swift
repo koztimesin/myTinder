@@ -54,23 +54,19 @@ struct ProfileInsertDTO: Encodable {
 
 struct ProfileUpdateDTO: Encodable {
     
-    let name: String
     let bio: String?
-    let gender: String
     let interestedIn: [String]
     let photoPaths: [String]
     
     enum CodingKeys: String, CodingKey {
-        case name, bio, gender
+        case bio
         case interestedIn = "interested_in"
         case photoPaths = "photo_paths"
     }
     
     func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(name, forKey: .name)
         try c.encode(bio, forKey: .bio)
-        try c.encode(gender, forKey: .gender)
         try c.encode(interestedIn, forKey: .interestedIn)
         try c.encode(photoPaths, forKey: .photoPaths)
     }

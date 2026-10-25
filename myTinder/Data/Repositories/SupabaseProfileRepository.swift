@@ -78,8 +78,7 @@ extension SupabaseProfileRepository: ProfileRepositoryProtocol {
         let uid = try await currentUserID()
         
         let dto = ProfileUpdateDTO(
-            name: changes.name, bio: changes.bio,
-            gender: changes.gender.rawValue,
+            bio: changes.bio,
             interestedIn: changes.interestedIn.map(\.rawValue),
             photoPaths: changes.photoPaths
         )

@@ -98,10 +98,40 @@ final class OnboardingViewModel {
         
         return "Не удалось создать профиль. Попробуйте ещё раз."
     }
+    
+    /// Убирает фото из списка. На сервере его ещё нет, поэтому удалять там нечего.
+    /// - Parameter photo: фото, которое нужно убрать.
+    private func removePhoto(_ photo: LocalPhoto) {
+        photos.removeAll { $0.id == photo.id }
+    }
+    
+    /// Делает фото главным, то есть переносит его на первое место.
+    /// - Parameter photo: фото, которое станет главным.
+    private func makeMain(_ photo: LocalPhoto) {
+        guard let index = photos.firstIndex(of: photo), index > 0 else { return }
+        
+        photos.move(fromOffsets: IndexSet(integer: index), toOffset: 0)
+    }
 }
 
 // MARK: - OnboardingViewModelProtocol
 extension OnboardingViewModel: OnboardingViewModelProtocol {
+    
+    /// Плитки для сетки: каждая знает, как удалить фото и сделать его главным.
+    /// Замыкания не хранятся, плитки собираются заново при каждом обращении, поэтому цикла ссылок нет.
+    var tiles: [PhotoTileViewModel] {
+        photos.enumerated().map { index, photo in
+            PhotoTileViewModel(
+                id: photo.id.uuidString,
+                position: index + 1,
+                isMain: index == 0,
+                canRemove: true,
+                source: .local(photo.preview),
+                onRemove: { self.removePhoto(photo) },
+                onMakeMain: { self.makeMain(photo) }
+            )
+        }
+    }
     
     /// Самая поздняя допустимая дата рождения в `DatePicker` (сегодня минус 18 лет).
     var latestBirthDate: Date {
@@ -166,20 +196,6 @@ extension OnboardingViewModel: OnboardingViewModelProtocol {
         if hadFailure {
             errorMessage = "Не удалось добавить часть фото."
         }
-    }
-    
-    /// Убирает фото из списка. На сервере его ещё нет, поэтому удалять там нечего.
-    /// - Parameter photo: фото, которое нужно убрать.
-    func removePhoto(_ photo: LocalPhoto) {
-        photos.removeAll { $0.id == photo.id }
-    }
-    
-    /// Делает фото главным, то есть переносит его на первое место.
-    /// - Parameter photo: фото, которое станет главным.
-    func makeMain(_ photo: LocalPhoto) {
-        guard let index = photos.firstIndex(of: photo), index > 0 else { return }
-        
-        photos.move(fromOffsets: IndexSet(integer: index), toOffset: 0)
     }
     
     /// Проверяет форму, загружает фото, затем создаёт профиль.
