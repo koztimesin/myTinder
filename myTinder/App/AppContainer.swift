@@ -16,6 +16,7 @@ final class AppContainer {
     lazy var profileRepository: ProfileRepositoryProtocol = SupabaseProfileRepository(client: supabase)
     lazy var photoRepository: PhotoRepositoryProtocol = SupabasePhotoRepository(client: supabase)
     lazy var photoURLProvider: PhotoURLProviderProtocol = PhotoURLCache(repository: photoRepository)
+    lazy var feedRepository = SupabaseFeedRepository(client: supabase)
     
     init() {
         authRepository = AuthRepository(client: supabase)
@@ -53,5 +54,12 @@ final class AppContainer {
             onUpdated: onUpdated,
             onSignOut: onSignOut
         )
+    }
+    
+    /// Собирает модель экрана ленты.
+    func makeFeedViewModel() -> FeedViewModel {
+        
+        let useCase = FeedUseCase(repository: feedRepository)
+        return FeedViewModel(useCase: useCase, photoURLProvider: photoURLProvider)
     }
 }
