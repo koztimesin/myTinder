@@ -34,13 +34,20 @@ struct ProfileGateView: View {
                     )
                 )
                 
+//            case .ready(let profile):
+//                EditProfileView(
+//                    viewModel: container.makeEditProfileViewModel(
+//                        profile: profile,
+//                        onUpdated: { store.didUpdate($0) },
+//                        onSignOut: { Task { await session.signOut() } }
+//                    )
+//                )
             case .ready(let profile):
-                EditProfileView(
-                    viewModel: container.makeEditProfileViewModel(
-                        profile: profile,
-                        onUpdated: { store.didUpdate($0) },
-                        onSignOut: { Task { await session.signOut() } }
-                    )
+                MainTabView(
+                    container: container,
+                    profile: profile,
+                    onProfileUpdated: { store.didUpdate($0) },
+                    onSignOut: { Task { await session.signOut() } }
                 )
                 
             case .failed(let message):
