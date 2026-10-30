@@ -10,6 +10,9 @@ import Observation
 
 @MainActor
 protocol ChatViewModelProtocol: AnyObject, Observable {
+    /// Тип модели экрана жалобы.
+    associatedtype ReportModel: ReportViewModelProtocol
+    
     /// Имя собеседника для шапки.
     var title: String { get }
     /// Аватар собеседника для шапки.
@@ -24,6 +27,20 @@ protocol ChatViewModelProtocol: AnyObject, Observable {
     var hasMoreHistory: Bool { get }
     /// Модель панели ввода.
     var inputBar: ChatInputBarViewModel { get }
+    
+    /// Модель шторки жалобы; создаётся при открытии.
+    var report: ReportModel? { get }
+    /// Показана ли шторка жалобы.
+    var isReportPresented: Bool { get set }
+    /// Показано ли подтверждение блокировки.
+    var isBlockConfirmationPresented: Bool { get set }
+    /// Пояснение в подтверждении блокировки.
+    var blockConfirmationMessage: String { get }
+    /// Идёт ли блокировка (меню недоступно).
+    var isModerationBusy: Bool { get }
+    /// Ошибка последнего действия модерации; сама пропадает через несколько секунд.
+    var actionError: ErrorBannerViewModel? { get }
+    
     /// Загружает историю и держит подписку, пока задача не отменена.
     func run() async
     /// Повторяет первую загрузку после ошибки.
@@ -35,4 +52,10 @@ protocol ChatViewModelProtocol: AnyObject, Observable {
     /// Сообщает об изменении активности приложения.
     /// - Parameter isActive: `true`, когда приложение на переднем плане.
     func sceneDidChange(isActive: Bool) async
+    /// Открывает шторку жалобы.
+    func openReport()
+    /// Показывает подтверждение блокировки.
+    func requestBlock()
+    /// Блокирует собеседника после подтверждения; при успехе закрывает чат.
+    func confirmBlock() async
 }

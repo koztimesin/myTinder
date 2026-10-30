@@ -20,6 +20,8 @@ final class AppContainer {
     lazy var feedRepository = SupabaseFeedRepository(client: supabase)
     lazy var matchRepository: MatchRepositoryProtocol = SupabaseMatchRepository(client: supabase)
     lazy var chatRepository: ChatRepositoryProtocol = SupabaseChatRepository(client: supabase)
+    lazy var moderationRepository: ModerationRepositoryProtocol = SupabaseModerationRepository(client: supabase)
+
     
     init() {
         authRepository = AuthRepository(client: supabase)
@@ -120,7 +122,8 @@ final class AppContainer {
         matchID: UUID,
         partner: MatchPartner,
         currentUserID: UUID,
-        onRead: @escaping @MainActor () -> Void
+        onRead: @escaping @MainActor () -> Void,
+        onBlocked: @escaping @MainActor () -> Void
     ) -> ChatViewModel {
         ChatViewModel(
             matchID: matchID,
@@ -128,7 +131,28 @@ final class AppContainer {
             currentUserID: currentUserID,
             repository: chatRepository,
             photoURLProvider: photoURLProvider,
+            moderation: moderationRepository,
+            makeReportViewModel: { onFinished in
+                self.makeReportViewModel(partnerID: partner.id,
+                                         partnerName: partner.name,
+                                         onFinished: onFinished)
+            },
+            onBlocked: onBlocked,
             onRead: onRead
+        )
+    }
+    
+    /// Собирает модель экрана жалобы.
+    func makeReportViewModel(
+        partnerID: UUID,
+        partnerName: String,
+        onFinished: @escaping @MainActor (Bool) -> Void
+    ) -> ReportViewModel {
+        ReportViewModel(
+            userID: partnerID,
+            name: partnerName,
+            repository: moderationRepository,
+            onFinished: onFinished
         )
     }
 }

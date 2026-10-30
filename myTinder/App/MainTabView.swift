@@ -164,7 +164,11 @@ struct MainTabView: View {
             matchID: match.id,
             partner: match.partner,
             currentUserID: profile.id,
-            onRead: { Task { await store.reload() } }
+            onRead: { Task { await store.reload() } },
+            onBlocked: {
+                router.matchesPath = []
+                Task { await store.reload() }
+            }
         )
     }
 }
