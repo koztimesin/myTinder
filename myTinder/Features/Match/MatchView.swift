@@ -13,15 +13,13 @@ struct MatchesView<ViewModel: MatchesViewModelProtocol>: View {
     let viewModel: ViewModel
     
     var body: some View {
-        NavigationStack {
-            content
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(AppTheme.Colors.background)
-                .navigationTitle("Матчи")
-        }
-        .task(id: viewModel.photoPaths) {
-            await viewModel.loadPhotos()
-        }
+        content
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(AppTheme.Colors.background)
+            .navigationTitle("Матчи")
+            .task(id: viewModel.photoPaths) {
+                await viewModel.loadPhotos()
+            }
     }
     
     // MARK: - Состояния
@@ -107,10 +105,12 @@ struct MatchesView<ViewModel: MatchesViewModelProtocol>: View {
                         
                         MatchRowView(viewModel: row)
                         
-                        Rectangle()
-                            .fill(AppTheme.Colors.separator)
-                            .frame(height: 1)
-                            .padding(.leading, AppTheme.Spacing.m)
+                        if row.id != viewModel.dialogRows.last?.id {
+                            Rectangle()
+                                .fill(AppTheme.Colors.separator)
+                                .frame(height: 1)
+                                .padding(.leading, AppTheme.Spacing.m)
+                        }
                     }
                 }
             }
@@ -195,6 +195,9 @@ extension MatchesPreviewViewModel: MatchesViewModelProtocol {
 }
 
 #Preview("Матчи") {
-    MatchesView(viewModel: MatchesPreviewViewModel())
+    
+    NavigationStack {
+        MatchesView(viewModel: MatchesPreviewViewModel())
+    }
 }
 #endif

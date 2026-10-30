@@ -104,6 +104,7 @@ extension MatchesViewModel: MatchesViewModelProtocol {
                 preview: message.isFromMe ? "Вы: \(message.body)" : message.body,
                 timeText: timeText(for: message.sentAt),
                 avatar: avatar(for: match.partner, diameter: 56, showsRing: false),
+                unreadCount: match.unreadCount,
                 onTap: { onSelect(match.id) }
             )
         }

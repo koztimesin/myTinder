@@ -18,6 +18,8 @@ struct MatchRowViewModel: Identifiable {
     let timeText: String
     /// Аватар без кольца.
     let avatar: MatchAvatarViewModel
+    /// Число непрочитанных сообщений; 0 — бейдж не показывается.
+    var unreadCount: Int = 0
     /// Нажатие на строку.
     let onTap: @MainActor () -> Void
 }

@@ -16,12 +16,21 @@ enum MainTab: Hashable {
 @MainActor
 @Observable
 final class MainTabRouter {
+    
     /// Выбранная вкладка.
     var selectedTab: MainTab = .feed
+    
+    /// Открытые чаты во вкладке «Матчи» (идентификаторы матчей).
+    var matchesPath: [UUID] = []
+    
+    func openChat(_ matchID: UUID) {
+        selectedTab = .matches
+        matchesPath = [matchID]
+    }
 }
 
 struct MainTabView: View {
-
+    
     /// Контейнер зависимостей.
     private let container: AppContainer
     /// Профиль текущего пользователя.
@@ -30,7 +39,7 @@ struct MainTabView: View {
     private let onProfileUpdated: @MainActor (Profile) -> Void
     /// Вызывается при выходе из аккаунта.
     private let onSignOut: @MainActor () -> Void
-
+    
     /// Модель ленты: создаётся один раз и живёт, пока жив хост.
     @State private var feedViewModel: FeedViewModel
     /// Выбранная вкладка.
@@ -39,9 +48,9 @@ struct MainTabView: View {
     @State private var matchesStore: MatchesStore
     /// Модель экрана «Матчи».
     @State private var matchesViewModel: MatchesViewModel
-
+    
     @Environment(\.scenePhase) private var scenePhase
-
+    
     /// - Parameters:
     ///   - container: контейнер зависимостей.
     ///   - profile: профиль текущего пользователя.
@@ -58,7 +67,7 @@ struct MainTabView: View {
         self.onProfileUpdated = onProfileUpdated
         self.onSignOut = onSignOut
         _feedViewModel = State(initialValue: container.makeFeedViewModel())
-
+        
         let router = MainTabRouter()
         let store = container.makeMatchesStore()
         _router = State(initialValue: router)
@@ -66,21 +75,27 @@ struct MainTabView: View {
         _matchesViewModel = State(initialValue: container.makeMatchesViewModel(
             store: store,
             onOpenFeed: { router.selectedTab = .feed },
-            onSelectMatch: { _ in /* ToDo */ }
+            onSelectMatch: { id in router.openChat(id) }
         ))
     }
-
+    
     var body: some View {
         TabView(selection: $router.selectedTab) {
             
             Tab("Лента", systemImage: "rectangle.stack", value: MainTab.feed) {
                 FeedView(viewModel: feedViewModel)
             }
-
+            
             Tab("Матчи", systemImage: "heart", value: MainTab.matches) {
-                MatchesView(viewModel: matchesViewModel)
+                NavigationStack(path: $router.matchesPath) {
+                    MatchesView(viewModel: matchesViewModel)
+                        .navigationDestination(for: UUID.self) { matchID in
+                            chatDestination(for: matchID)
+                        }
+                }
             }
-
+            .badge(matchesStore.unreadTotal)
+            
             Tab("Профиль", systemImage: "person.crop.circle", value: MainTab.profile) {
                 EditProfileView(
                     viewModel: container.makeEditProfileViewModel(
@@ -103,14 +118,14 @@ struct MainTabView: View {
                 .id(match.id)
         }
     }
-
+    
     // MARK: - Окно «Это матч»
-
+    
     /// Привязка к текущему окну. Закрывается только кнопками, поэтому запись игнорируется.
     private var celebrationBinding: Binding<MatchSummary?> {
         Binding(get: { matchesStore.currentCelebration }, set: { _ in })
     }
-
+    
     /// Собирает модель окна «Это матч».
     /// - Parameter match: матч, для которого показывается окно.
     /// - Returns: модель с действиями «Написать» и «Продолжить».
@@ -122,7 +137,7 @@ struct MainTabView: View {
             match: match,
             myPhotoPath: profile.photoPaths.first,
             onWrite: {
-                router.selectedTab = .matches
+                router.openChat(match.id)
                 store.dismissCelebration(id: match.id)
             },
             onDismiss: {
@@ -130,19 +145,56 @@ struct MainTabView: View {
             }
         )
     }
+    
+    /// Экран чата для матча из навигации.
+    /// - Parameter matchID: матч диалога.
+    @ViewBuilder
+    private func chatDestination(for matchID: UUID) -> some View {
+        if let match = matchesStore.matches.first(where: { $0.id == matchID }) {
+            ChatPresenter { makeChatViewModel(for: match) }
+                .id(matchID)
+        }
+    }
+    
+    /// Собирает модель чата.
+    /// - Parameter match: матч диалога.
+    private func makeChatViewModel(for match: MatchSummary) -> ChatViewModel {
+        let store = matchesStore
+        return container.makeChatViewModel(
+            matchID: match.id,
+            partner: match.partner,
+            currentUserID: profile.id,
+            onRead: { Task { await store.reload() } }
+        )
+    }
 }
 
 /// Создаёт модель окна «Это матч» один раз на показ, чтобы перерисовки не сбрасывали её состояние.
 private struct CelebrationPresenter: View {
-
+    
     @State private var viewModel: MatchCelebrationViewModel
-
+    
     /// - Parameter makeViewModel: фабрика модели, вызывается один раз при создании.
     init(makeViewModel: () -> MatchCelebrationViewModel) {
         _viewModel = State(initialValue: makeViewModel())
     }
-
+    
     var body: some View {
         MatchCelebrationView(viewModel: viewModel)
+    }
+}
+
+/// Создаёт модель чата один раз на открытие, чтобы перерисовки не сбрасывали состояние.
+private struct ChatPresenter: View {
+    
+    @State private var viewModel: ChatViewModel
+    
+    /// - Parameter makeViewModel: фабрика модели, вызывается при создании.
+    init(makeViewModel: () -> ChatViewModel) {
+        _viewModel = State(initialValue: makeViewModel())
+    }
+    
+    var body: some View {
+        ChatView(viewModel: viewModel)
     }
 }

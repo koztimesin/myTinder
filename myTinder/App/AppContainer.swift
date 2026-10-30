@@ -19,6 +19,7 @@ final class AppContainer {
     lazy var photoURLProvider: PhotoURLProviderProtocol = PhotoURLCache(repository: photoRepository)
     lazy var feedRepository = SupabaseFeedRepository(client: supabase)
     lazy var matchRepository: MatchRepositoryProtocol = SupabaseMatchRepository(client: supabase)
+    lazy var chatRepository: ChatRepositoryProtocol = SupabaseChatRepository(client: supabase)
     
     init() {
         authRepository = AuthRepository(client: supabase)
@@ -106,6 +107,28 @@ final class AppContainer {
             photoURLProvider: photoURLProvider,
             onWrite: onWrite,
             onDismiss: onDismiss
+        )
+    }
+    
+    /// Собирает модель экрана чата.
+    /// - Parameters:
+    ///   - matchID: матч диалога.
+    ///   - partner: собеседник.
+    ///   - currentUserID: id текущего пользователя.
+    ///   - onRead: что делать, когда диалог отмечен прочитанным.
+    func makeChatViewModel(
+        matchID: UUID,
+        partner: MatchPartner,
+        currentUserID: UUID,
+        onRead: @escaping @MainActor () -> Void
+    ) -> ChatViewModel {
+        ChatViewModel(
+            matchID: matchID,
+            partner: partner,
+            currentUserID: currentUserID,
+            repository: chatRepository,
+            photoURLProvider: photoURLProvider,
+            onRead: onRead
         )
     }
 }
