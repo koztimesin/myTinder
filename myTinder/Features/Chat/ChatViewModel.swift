@@ -82,6 +82,16 @@ final class ChatViewModel {
     private var needsMarkRead = true
     /// Есть ли более старые сообщения на сервере.
     private(set) var hasMoreHistory = false
+    
+    private let moderation: ModerationRepositoryProtocol
+    private let makeReportViewModel: @MainActor (_ onFinished: @escaping @MainActor (_ didBlock: Bool) -> Void) -> ReportViewModel
+    private let onBlocked: @MainActor () -> Void
+
+    private(set) var report: ReportViewModel?
+    var isReportPresented = false
+    var isBlockConfirmationPresented = false
+    private(set) var isModerationBusy = false
+    private(set) var actionError: ErrorBannerViewModel?
 
     /// - Parameters:
     ///   - matchID: матч этого диалога.
@@ -96,6 +106,9 @@ final class ChatViewModel {
         currentUserID: UUID,
         repository: ChatRepositoryProtocol,
         photoURLProvider: PhotoURLProviderProtocol,
+        moderation: ModerationRepositoryProtocol,
+        makeReportViewModel: @escaping @MainActor (_ onFinished: @escaping @MainActor (_ didBlock: Bool) -> Void) -> ReportViewModel,
+        onBlocked: @escaping @MainActor () -> Void,
         onRead: @escaping @MainActor () -> Void
     ) {
         self.matchID = matchID
@@ -103,6 +116,9 @@ final class ChatViewModel {
         self.currentUserID = currentUserID
         self.repository = repository
         self.photoURLProvider = photoURLProvider
+        self.moderation = moderation
+        self.makeReportViewModel = makeReportViewModel
+        self.onBlocked = onBlocked
         self.onRead = onRead
     }
 
@@ -288,6 +304,46 @@ extension ChatViewModel: ChatViewModelProtocol {
             canSend: !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
             onSend: { self.send() }
         )
+    }
+    
+    var blockConfirmationMessage: String {
+        "Вы больше не увидите друг друга, а диалог с «\(partner.name)» будет удалён без возможности восстановления."
+    }
+
+    func openReport() {
+        report = makeReportViewModel { [weak self] didBlock in
+            self?.isReportPresented = false
+            if didBlock { self?.onBlocked() }
+        }
+        isReportPresented = true
+    }
+
+    func requestBlock() {
+        isBlockConfirmationPresented = true
+    }
+
+    func confirmBlock() async {
+        guard !isModerationBusy else { return }
+
+        isModerationBusy = true
+        defer { isModerationBusy = false }
+
+        do {
+            try await moderation.block(userID: partner.id)
+            onBlocked()
+        } catch {
+            showActionError("Не удалось заблокировать. Проверьте соединение и попробуйте снова.")
+        }
+    }
+
+    /// Показывает плашку ошибки на 4 секунды.
+    private func showActionError(_ message: String) {
+        let banner = ErrorBannerViewModel(message: message)
+        actionError = banner
+        Task {
+            try? await Task.sleep(for: .seconds(4))
+            if actionError == banner { actionError = nil }
+        }
     }
 
     func run() async {

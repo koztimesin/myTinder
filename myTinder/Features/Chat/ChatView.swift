@@ -9,7 +9,7 @@ import SwiftUI
 
 struct ChatView<ViewModel: ChatViewModelProtocol>: View {
     
-    let viewModel: ViewModel
+    @Bindable var viewModel: ViewModel
     
     @Environment(\.scenePhase) private var scenePhase
     /// Включается чуть позже появления списка, чтобы стартовая прокрутка вниз не запустила подгрузку истории.
@@ -22,6 +22,7 @@ struct ChatView<ViewModel: ChatViewModelProtocol>: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) { header }
+                ToolbarItem(placement: .topBarTrailing) { actionsMenu }
             }
             .toolbarVisibility(.hidden, for: .tabBar)
             .task { await viewModel.run() }
@@ -29,11 +30,23 @@ struct ChatView<ViewModel: ChatViewModelProtocol>: View {
             .onChange(of: scenePhase) { _, phase in
                 Task { await viewModel.sceneDidChange(isActive: phase == .active) }
             }
+            .alert(
+                "Заблокировать пользователя?",
+                isPresented: $viewModel.isBlockConfirmationPresented
+            ) {
+                Button("Отмена", role: .cancel) {}
+                Button("Заблокировать", role: .destructive) {
+                    Task { await viewModel.confirmBlock() }
+                }
+            } message: {
+                Text(viewModel.blockConfirmationMessage)
+            }
+            .sheet(isPresented: $viewModel.isReportPresented) {
+                if let report = viewModel.report {
+                    ReportView(viewModel: report)
+                }
+            }
     }
-    
-    // MARK: - Шапка
-    
-    /// Аватар и имя собеседника.
     private var header: some View {
         HStack(spacing: AppTheme.Spacing.s) {
             MatchAvatarView(viewModel: viewModel.avatar)
@@ -48,9 +61,27 @@ struct ChatView<ViewModel: ChatViewModelProtocol>: View {
         .accessibilityAddTraits(.isHeader)
     }
     
-    // MARK: - Состояния
+    private var actionsMenu: some View {
+        Menu {
+            Button {
+                viewModel.openReport()
+            } label: {
+                Label("Пожаловаться", systemImage: "exclamationmark.bubble")
+            }
+            
+            Button(role: .destructive) {
+                viewModel.requestBlock()
+            } label: {
+                Label("Заблокировать", systemImage: "hand.raised")
+            }
+        } label: {
+            Image(systemName: "ellipsis")
+                .foregroundStyle(AppTheme.Colors.textPrimary)
+        }
+        .disabled(viewModel.isModerationBusy)
+        .accessibilityLabel("Действия с диалогом")
+    }
     
-    /// Содержимое по состоянию экрана.
     @ViewBuilder
     private var content: some View {
         switch viewModel.state {
@@ -62,12 +93,18 @@ struct ChatView<ViewModel: ChatViewModelProtocol>: View {
         case .content:
             messagesList
                 .safeAreaInset(edge: .bottom) {
-                    ChatInputBarView(viewModel: viewModel.inputBar)
+                    VStack(spacing: AppTheme.Spacing.s) {
+                        if let error = viewModel.actionError {
+                            ErrorBannerView(viewModel: error)
+                                .padding(.horizontal, AppTheme.Spacing.m)
+                        }
+                        
+                        ChatInputBarView(viewModel: viewModel.inputBar)
+                    }
                 }
         }
     }
     
-    /// Первая загрузка не удалась.
     private var failedState: some View {
         VStack(spacing: AppTheme.Spacing.m) {
             
@@ -84,9 +121,6 @@ struct ChatView<ViewModel: ChatViewModelProtocol>: View {
         .padding(AppTheme.Spacing.l)
     }
     
-    // MARK: - Список
-    
-    /// Прокручиваемый список сообщений с подгрузкой истории сверху.
     private var messagesList: some View {
         ScrollViewReader { proxy in
             ScrollView {
@@ -119,8 +153,6 @@ struct ChatView<ViewModel: ChatViewModelProtocol>: View {
         }
     }
     
-    /// Строка списка.
-    /// - Parameter row: модель строки.
     @ViewBuilder
     private func rowView(_ row: ChatRowViewModel) -> some View {
         switch row {
@@ -153,6 +185,12 @@ final class ChatPreviewViewModel {
     var state: ChatScreenState = .content
     var hasMoreHistory = false
     var draft = ""
+    var report: ReportPreviewViewModel?
+    var isReportPresented = false
+    var isBlockConfirmationPresented = false
+    var blockConfirmationMessage = "Вы больше не увидите друг друга, а диалог с «Алина» будет удалён без возможности восстановления."
+    var isModerationBusy = false
+    var actionError: ErrorBannerViewModel?
     var rows: [ChatRowViewModel] = [
         .daySeparator(DaySeparatorViewModel(id: "d1", title: "Сегодня")),
         .message(MessageBubbleViewModel(
@@ -176,11 +214,25 @@ extension ChatPreviewViewModel: ChatViewModelProtocol {
     func loadOlder() async {}
     func loadPhotos() async {}
     func sceneDidChange(isActive: Bool) async {}
+    func openReport() {
+        report = ReportPreviewViewModel()
+        isReportPresented = true
+    }
+    func requestBlock() { isBlockConfirmationPresented = true }
+    func confirmBlock() async {}
 }
 
 #Preview("Чат") {
     NavigationStack {
         ChatView(viewModel: ChatPreviewViewModel())
+    }
+}
+
+#Preview("Чат: ошибка действия") {
+    let model = ChatPreviewViewModel()
+    model.actionError = ErrorBannerViewModel(message: "Не удалось заблокировать. Проверьте соединение и попробуйте снова.")
+    return NavigationStack {
+        ChatView(viewModel: model)
     }
 }
 #endif
