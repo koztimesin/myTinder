@@ -37,7 +37,8 @@ struct MatchSummary: Identifiable, Equatable, Sendable {
     let partner: MatchPartner
     /// Последнее сообщение; `nil`, пока в диалоге никто ничего не написал.
     let lastMessage: LastMessage?
-    
+    /// Сколько сообщений собеседника ещё не прочитано.
+    let unreadCount: Int
     /// Новый матч: сообщений ещё нет (такие матчи показываются в ряду «Новые»).
     var isNew: Bool { lastMessage == nil }
 }

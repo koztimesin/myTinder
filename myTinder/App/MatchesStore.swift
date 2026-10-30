@@ -30,26 +30,58 @@ final class MatchesStore {
     private var isReloading = false
     private var needsReload = false
     
+    /// Сколько всего непрочитанных сообщений во всех диалогах.
+    var unreadTotal: Int { matches.reduce(0) { $0 + $1.unreadCount } }
+    
     /// - Parameter repository: источник матчей и событий о новых матчах.
     init(repository: MatchRepositoryProtocol) {
         self.repository = repository
     }
     
-    /// Загружает список и слушает новые матчи, пока задача не отменена.
+    /// Загружает список и слушает новые матчи и сообщения, пока задача не отменена.
     /// Если подписка оборвалась, через 5 секунд подключается заново.
     func run() async {
-        
+
         while !Task.isCancelled {
-            
+
             await reload()
-            
-            for await _ in repository.newMatchSignals() {
-                await reload()
-            }
+            await listen()
             guard !Task.isCancelled else { return }
-            
+
             try? await Task.sleep(for: .seconds(5))
         }
+    }
+
+    /// Слушает потоки новых матчей и новых сообщений и перезагружает список на каждый сигнал.
+    /// Возвращается, когда оборвалась любая из подписок или задача отменена.
+    private func listen() async {
+        let (signals, continuation) = AsyncStream.makeStream(of: Void.self)
+
+        let matchesTask = Task {
+            for await _ in self.repository.newMatchSignals() {
+                continuation.yield()
+            }
+            continuation.finish()
+        }
+        let messagesTask = Task {
+            for await _ in self.repository.messageSignals() {
+                continuation.yield()
+            }
+            continuation.finish()
+        }
+
+        await withTaskCancellationHandler {
+            for await _ in signals {
+                await reload()
+            }
+        } onCancel: {
+            matchesTask.cancel()
+            messagesTask.cancel()
+            continuation.finish()
+        }
+
+        matchesTask.cancel()
+        messagesTask.cancel()
     }
     
     /// Перезагружает список. Вызовы во время загрузки не дублируют запрос,

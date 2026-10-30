@@ -17,6 +17,7 @@ struct MatchSummaryDTO: Decodable {
     let lastMessageBody: String?
     let lastMessageAt: Date?
     let lastMessageSender: UUID?
+    let unreadCount: Int?
     
     enum CodingKeys: String, CodingKey {
         case matchID = "match_id"
@@ -27,6 +28,7 @@ struct MatchSummaryDTO: Decodable {
         case lastMessageBody = "last_message_body"
         case lastMessageAt = "last_message_at"
         case lastMessageSender = "last_message_sender"
+        case unreadCount = "unread_count"
     }
     
     /// Переводит строку в доменную модель.
@@ -43,7 +45,8 @@ struct MatchSummaryDTO: Decodable {
             id: matchID,
             matchedAt: matchedAt,
             partner: MatchPartner(id: partnerID, name: partnerName, photoPath: partnerPhotoPath),
-            lastMessage: lastMessage
+            lastMessage: lastMessage,
+            unreadCount: unreadCount ?? 0
         )
     }
 }

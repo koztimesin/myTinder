@@ -123,8 +123,8 @@ private extension Color {
     /// - Parameters:
     ///   - light: цвет светлой темы в формате `0xRRGGBB`.
     ///   - dark: цвет тёмной темы в формате `0xRRGGBB`.
-    init(light: UInt32, dark: UInt32) {
-        self.init(uiColor: UIColor { traits in
+    nonisolated init(light: UInt32, dark: UInt32) {
+        self.init(uiColor: UIColor { @Sendable traits in
             UIColor(hex: traits.userInterfaceStyle == .dark ? dark : light)
         })
     }
@@ -134,7 +134,7 @@ private extension UIColor {
     
     /// Создаёт цвет из HEX-значения без прозрачности.
     /// - Parameter hex: значение в формате `0xRRGGBB`.
-    convenience init(hex: UInt32) {
+    nonisolated convenience init(hex: UInt32) {
         self.init(
             red: CGFloat((hex >> 16) & 0xFF) / 255,
             green: CGFloat((hex >> 8) & 0xFF) / 255,

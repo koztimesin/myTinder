@@ -18,6 +18,10 @@ protocol MatchRepositoryProtocol: Sendable {
     /// - Returns: поток идентификаторов новых матчей. Завершается при ошибке подключения
     ///   или когда потребитель перестаёт его читать (подписка при этом закрывается).
     func newMatchSignals() -> AsyncStream<UUID>
+    
+    /// Открывает подписку на новые сообщения во всех диалогах текущего пользователя.
+    /// - Returns: поток сигналов; завершается при ошибке подключения или когда потребитель перестаёт его читать.
+    func messageSignals() -> AsyncStream<Void>
 }
 
 struct SupabaseMatchRepository {
@@ -78,6 +82,30 @@ extension SupabaseMatchRepository: MatchRepositoryProtocol {
                 }
                 continuation.finish()
             }
+            continuation.onTermination = { _ in
+                task.cancel()
+            }
+        }
+    }
+    
+    func messageSignals() -> AsyncStream<Void> {
+        
+        AsyncStream { continuation in
+            
+            let task = Task {
+                let topic = "messages-\(UUID().uuidString.prefix(8))"
+                let channel = client.realtimeV2.channel(topic)
+                let inserts = channel.postgresChange(InsertAction.self, schema: "public", table: "messages")
+                await channel.subscribe()
+                
+                for await _ in inserts {
+                    continuation.yield()
+                }
+                
+                await client.realtimeV2.removeChannel(channel)
+                continuation.finish()
+            }
+            
             continuation.onTermination = { _ in
                 task.cancel()
             }
