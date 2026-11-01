@@ -8,31 +8,23 @@
 import Foundation
 import Observation
 
-/// Решение, принятое в анкете.
-enum CandidateDecision: Equatable {
-    /// «Нравится».
-    case like
-    /// «Пропустить».
-    case dislike
-}
-
+/// Всё, с чем работает раскрытая анкета в ленте: жалоба и блокировка.
+/// Сама анкета (фото, имя, «О себе») рисуется карточкой, решение «Нравится» и «Пропустить»
+/// принимает лента, так что здесь только модерация.
 @MainActor
-protocol CandidateViewModelProtocol: AnyObject, Observable, Identifiable where ID == UUID {
+protocol CandidateViewModelProtocol: AnyObject, Observable {
     /// Модель шторки жалобы.
     associatedtype Report: ReportViewModelProtocol
     
-    /// Заголовок вида «Анна, 27».
-    var title: String { get }
-    /// Описание «о себе».
-    var bio: String? { get }
-    /// Готовые signed URL; пусто, пока не получены.
-    var photoURLs: [URL] { get }
-    /// Сколько всего фото (для полосок, пока ссылки грузятся).
-    var photoCount: Int { get }
-    /// Идёт ли блокировка: кнопки в это время неактивны.
+    /// Идентификатор анкеты (профиля).
+    var id: UUID { get }
+    /// Идёт ли блокировка: меню и кнопки в это время неактивны.
     var isBusy: Bool { get }
     /// Текст ошибки действия, `nil` если ошибки нет.
     var errorMessage: String? { get }
+    /// Заблокирован ли пользователь (из меню или вместе с жалобой). Лента по этому признаку
+    /// сворачивает анкету и убирает карточку.
+    var didBlock: Bool { get }
     /// Пояснение в alert блокировки.
     var blockConfirmationMessage: String { get }
     /// Модель жалобы; создаётся в `openReport()`.
@@ -42,12 +34,6 @@ protocol CandidateViewModelProtocol: AnyObject, Observable, Identifiable where I
     /// Показан ли alert блокировки.
     var isBlockConfirmationPresented: Bool { get set }
     
-    /// «Нравится».
-    func like()
-    /// «Пропустить».
-    func dislike()
-    /// Закрывает анкету без решения.
-    func close()
     /// Открывает шторку жалобы.
     func openReport()
     /// Просит подтверждение блокировки.
@@ -63,13 +49,10 @@ protocol CandidateViewModelProtocol: AnyObject, Observable, Identifiable where I
 final class CandidateViewModel {
     
     let id: UUID
-    let title: String
-    let bio: String?
-    let photoURLs: [URL]
-    let photoCount: Int
     
     private(set) var isBusy = false
     private(set) var errorMessage: String?
+    private(set) var didBlock = false
     private(set) var report: ReportViewModel?
     var isReportPresented = false
     var isBlockConfirmationPresented = false
@@ -77,67 +60,31 @@ final class CandidateViewModel {
     private let name: String
     @ObservationIgnored private let moderation: any ModerationRepositoryProtocol
     @ObservationIgnored private let makeReportViewModel: @MainActor (_ onFinished: @escaping @MainActor (Bool) -> Void) -> ReportViewModel
-    @ObservationIgnored private let onDecision: @MainActor (CandidateDecision) -> Void
-    @ObservationIgnored private let onClose: @MainActor () -> Void
-    @ObservationIgnored private let onBlocked: @MainActor () -> Void
     
     /// - Parameters:
     ///   - card: анкета из ленты.
-    ///   - photoURLs: уже полученные ссылки на фото верхней карточки.
     ///   - moderation: источник блокировок.
     ///   - makeReportViewModel: собирает модель жалобы; принимает колбэк завершения.
-    ///   - onDecision: вызывается по «Нравится» и «Пропустить».
-    ///   - onClose: вызывается по шеврону.
-    ///   - onBlocked: вызывается после успешной блокировки (из меню или из жалобы).
     init(
         card: FeedCard,
-        photoURLs: [URL],
         moderation: any ModerationRepositoryProtocol,
-        makeReportViewModel: @escaping @MainActor (_ onFinished: @escaping @MainActor (Bool) -> Void) -> ReportViewModel,
-        onDecision: @escaping @MainActor (CandidateDecision) -> Void,
-        onClose: @escaping @MainActor () -> Void,
-        onBlocked: @escaping @MainActor () -> Void
+        makeReportViewModel: @escaping @MainActor (_ onFinished: @escaping @MainActor (Bool) -> Void) -> ReportViewModel
     ) {
         self.id = card.id
         self.name = card.name
-        self.title = "\(card.name), \(card.age)"
-        self.bio = card.bio
-        self.photoURLs = photoURLs
-        self.photoCount = card.photoPaths.count
         self.moderation = moderation
         self.makeReportViewModel = makeReportViewModel
-        self.onDecision = onDecision
-        self.onClose = onClose
-        self.onBlocked = onBlocked
     }
 }
 
-extension CandidateViewModel: @MainActor CandidateViewModelProtocol {
+extension CandidateViewModel: CandidateViewModelProtocol {
     
     var blockConfirmationMessage: String {
         "«\(name)» больше не появится в ленте. Блокировку нельзя отменить."
     }
     
-    func like() {
-        guard !isBusy else { return }
-        
-        onDecision(.like)
-    }
-    
-    func dislike() {
-        guard !isBusy else { return }
-        
-        onDecision(.dislike)
-    }
-    
-    func close() {
-        guard !isBusy else { return }
-        
-        onClose()
-    }
-    
     func openReport() {
-        guard !isBusy else { return }
+        guard !isBusy, !didBlock else { return }
         
         report = makeReportViewModel { [weak self] didBlock in
             self?.reportFinished(didBlock: didBlock)
@@ -146,20 +93,20 @@ extension CandidateViewModel: @MainActor CandidateViewModelProtocol {
     }
     
     func requestBlock() {
-        guard !isBusy else { return }
+        guard !isBusy, !didBlock else { return }
         
         isBlockConfirmationPresented = true
     }
     
     func confirmBlock() async {
-        guard !isBusy else { return }
+        guard !isBusy, !didBlock else { return }
         
         isBusy = true
         errorMessage = nil
         do {
             try await moderation.block(userID: id)
             isBusy = false
-            onBlocked()
+            didBlock = true
         } catch {
             isBusy = false
             errorMessage = "Не удалось заблокировать. Проверьте соединение и попробуйте снова."
@@ -176,7 +123,36 @@ extension CandidateViewModel: @MainActor CandidateViewModelProtocol {
         isReportPresented = false
         
         if didBlock {
-            onBlocked()
+            self.didBlock = true
         }
     }
 }
+
+#if DEBUG
+/// Заглушка модели анкеты для превью.
+@MainActor
+@Observable
+final class CandidateViewModelStub {
+    let id = UUID()
+    var isBusy = false
+    var errorMessage: String?
+    var didBlock = false
+    var isReportPresented = false
+    var isBlockConfirmationPresented = false
+    
+    /// - Parameter errorMessage: текст ошибки или `nil`.
+    init(errorMessage: String? = nil) {
+        self.errorMessage = errorMessage
+    }
+}
+
+extension CandidateViewModelStub: CandidateViewModelProtocol {
+    var report: ReportViewModel? { nil }
+    var blockConfirmationMessage: String { "«Алина» больше не появится в ленте. Блокировку нельзя отменить." }
+    
+    func openReport() { isReportPresented = true }
+    func requestBlock() { isBlockConfirmationPresented = true }
+    func confirmBlock() async { didBlock = true }
+    func dismissError() { errorMessage = nil }
+}
+#endif

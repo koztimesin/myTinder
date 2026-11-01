@@ -70,11 +70,6 @@ protocol FeedViewModelProtocol: AnyObject, Observable {
     func openCandidate(cardID: UUID)
     /// Сбрасывает анкету (вызывается, когда SwiftUI закрыл её сам).
     func closeCandidate()
-    /// Вызывается после закрытия анкеты. Если пользователь заблокировал кандидата,
-    /// убирает его карточку из очереди. Если принял решение, возвращает его: свайп
-    /// с анимацией запускает экран.
-    /// - Returns: решение для свайпа или `nil`.
-    func candidateDidDismiss() -> CandidateDecision?
     
     /// Текущее состояние экрана.
     var state: FeedState { get }
@@ -98,15 +93,8 @@ protocol FeedViewModelProtocol: AnyObject, Observable {
 @MainActor
 @Observable
 final class FeedViewModel {
-    
-    /// Чем закончилась анкета; применяется после закрытия, чтобы zoom-переход шёл к существующей карточке.
-    private enum CandidateOutcome {
-        case decision(CandidateDecision)
-        case blocked(UUID)
-    }
 
     private(set) var candidate: CandidateViewModel?
-    @ObservationIgnored private var pendingOutcome: CandidateOutcome?
     @ObservationIgnored private let moderation: any ModerationRepositoryProtocol
     @ObservationIgnored private let makeReportViewModel: ReportViewModelFactory
     
@@ -161,7 +149,6 @@ final class FeedViewModel {
         generation += 1
         isLoadingBatch = false
         candidate = nil
-        pendingOutcome = nil
         useCase.reset()
         queue = []
         photoURLs = [:]
@@ -274,35 +261,16 @@ extension FeedViewModel: @MainActor FeedViewModelProtocol {
         let factory = makeReportViewModel
         candidate = CandidateViewModel(
             card: card,
-            photoURLs: photoURLs[card.id] ?? [],
             moderation: moderation,
-            makeReportViewModel: { onFinished in factory(card.id, card.name, onFinished) },
-            onDecision: { [weak self] in self?.finishCandidate(.decision($0)) },
-            onClose: { [weak self] in self?.candidate = nil },
-            onBlocked: { [weak self] in self?.finishCandidate(.blocked(card.id)) }
+            makeReportViewModel: { onFinished in factory(card.id, card.name, onFinished) }
         )
     }
 
-    func closeCandidate() { candidate = nil }
-
-    func candidateDidDismiss() -> CandidateDecision? {
-        guard let outcome = pendingOutcome else { return nil }
+    func closeCandidate() {
+        guard let candidate else { return }
         
-        pendingOutcome = nil
-        switch outcome {
-        case .decision(let decision):
-            return decision
-        case .blocked(let id):
-            removeCard(id: id)
-            return nil
-        }
-    }
-
-    /// Запоминает итог и закрывает анкету.
-    /// - Parameter outcome: решение или блокировка.
-    private func finishCandidate(_ outcome: CandidateOutcome) {
-        pendingOutcome = outcome
-        candidate = nil
+        self.candidate = nil
+        if candidate.didBlock { removeCard(id: candidate.id) }
     }
 
     /// Убирает карточку заблокированного кандидата без запроса свайпа.
