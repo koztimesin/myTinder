@@ -65,7 +65,14 @@ final class AppContainer {
     func makeFeedViewModel() -> FeedViewModel {
         
         let useCase = FeedUseCase(repository: feedRepository)
-        return FeedViewModel(useCase: useCase, photoURLProvider: photoURLProvider)
+        return FeedViewModel(
+            useCase: useCase,
+            photoURLProvider: photoURLProvider,
+            moderation: moderationRepository,
+            makeReportViewModel: { userID, name, onFinished in
+                        self.makeReportViewModel(partnerID: userID, partnerName: name, onFinished: onFinished)
+                    }
+        )
     }
     
     /// Собирает общее хранилище матчей.

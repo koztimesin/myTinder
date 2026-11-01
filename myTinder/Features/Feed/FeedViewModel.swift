@@ -8,6 +8,13 @@
 import Foundation
 import Observation
 
+/// Как создаётся модель жалобы для анкеты: кто, имя, колбэк завершения.
+typealias ReportViewModelFactory = @MainActor (
+    _ userID: UUID,
+    _ name: String,
+    _ onFinished: @escaping @MainActor (Bool) -> Void
+) -> ReportViewModel
+
 /// Состояние экрана ленты.
 enum FeedState: Equatable {
     /// Первая загрузка или ожидание пакета.
@@ -53,6 +60,17 @@ extension FeedCardViewModel {
 /// Всё, с чем работает `FeedView`.
 @MainActor
 protocol FeedViewModelProtocol: AnyObject, Observable {
+    
+    /// Модель анкеты кандидата.
+    associatedtype Candidate: CandidateViewModelProtocol
+
+    /// Открытая анкета, `nil` если не открыта.
+    var candidate: Candidate? { get }
+    /// Открывает анкету карточки; игнорируется, если анкета уже открыта или карточки нет в очереди.
+    func openCandidate(cardID: UUID)
+    /// Сбрасывает анкету (вызывается, когда SwiftUI закрыл её сам).
+    func closeCandidate()
+    
     /// Текущее состояние экрана.
     var state: FeedState { get }
     /// Верхние карточки стопки, активная первая.
@@ -75,6 +93,11 @@ protocol FeedViewModelProtocol: AnyObject, Observable {
 @MainActor
 @Observable
 final class FeedViewModel {
+
+    private(set) var candidate: CandidateViewModel?
+    @ObservationIgnored private let moderation: any ModerationRepositoryProtocol
+    @ObservationIgnored private let makeReportViewModel: ReportViewModelFactory
+    
     private(set) var state: FeedState = .loading
     private(set) var swipeErrorMessage: String?
     
@@ -99,9 +122,16 @@ final class FeedViewModel {
     /// - Parameters:
     ///   - useCase: подготовка ленты и отправка свайпов.
     ///   - photoURLProvider: источник signed URL (кэш из этапа 2).
-    init(useCase: any FeedUseCaseProtocol, photoURLProvider: any PhotoURLProviderProtocol) {
+    init(
+        useCase: FeedUseCaseProtocol,
+        photoURLProvider: PhotoURLProviderProtocol,
+        moderation: ModerationRepositoryProtocol,
+        makeReportViewModel: @escaping ReportViewModelFactory
+    ) {
         self.useCase = useCase
         self.photoURLProvider = photoURLProvider
+        self.moderation = moderation
+        self.makeReportViewModel = makeReportViewModel
     }
     
     var visibleCards: [FeedCardViewModel] {
@@ -118,6 +148,7 @@ final class FeedViewModel {
     func reload() async {
         generation += 1
         isLoadingBatch = false
+        candidate = nil
         useCase.reset()
         queue = []
         photoURLs = [:]
@@ -222,4 +253,34 @@ final class FeedViewModel {
     }
 }
 
-extension FeedViewModel: FeedViewModelProtocol {}
+extension FeedViewModel: @MainActor FeedViewModelProtocol {
+    
+    func openCandidate(cardID: UUID) {
+        guard candidate == nil, let card = queue.first(where: { $0.id == cardID }) else { return }
+        
+        let factory = makeReportViewModel
+        candidate = CandidateViewModel(
+            card: card,
+            moderation: moderation,
+            makeReportViewModel: { onFinished in factory(card.id, card.name, onFinished) }
+        )
+    }
+
+    func closeCandidate() {
+        guard let candidate else { return }
+        
+        self.candidate = nil
+        if candidate.didBlock { removeCard(id: candidate.id) }
+    }
+
+    /// Убирает карточку заблокированного кандидата без запроса свайпа.
+    /// - Parameter id: идентификатор анкеты.
+    private func removeCard(id: UUID) {
+        guard queue.contains(where: { $0.id == id }) else { return }
+        
+        queue.removeAll { $0.id == id }
+        photoURLs[id] = nil
+        updateState()
+        Task { await refill() }
+    }
+}
