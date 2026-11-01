@@ -130,7 +130,8 @@ struct FeedCardView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, AppTheme.Spacing.m)
+        .padding(.leading, AppTheme.Spacing.m)
+        .padding(.trailing, AppTheme.Spacing.m + 44 + AppTheme.Spacing.s)
         .padding(.top, AppTheme.Spacing.xl * 2)
         .padding(.bottom, AppTheme.Size.likeButton + AppTheme.Spacing.l + AppTheme.Spacing.m)
         .background(AppTheme.Colors.photoGradient)

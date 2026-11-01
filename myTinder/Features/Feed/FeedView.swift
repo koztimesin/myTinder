@@ -23,6 +23,11 @@ struct FeedView<ViewModel: FeedViewModelProtocol>: View {
     /// Максимальная непрозрачность цветной подсветки (при смещении от порога и дальше).
     private let maxTintOpacity: Double = 0.3
     
+    /// Пространство имён для zoom-перехода от карточки к анкете.
+    @Namespace private var zoomNamespace
+    /// Ширина области карточек: нужна для улёта карточки после закрытия анкеты.
+    @State private var stackWidth: CGFloat = 0
+    
     /// - Parameter viewModel: модель экрана, собирается снаружи (`AppContainer.makeFeedViewModel()`).
     init(viewModel: ViewModel) {
         self.viewModel = viewModel
@@ -35,7 +40,12 @@ struct FeedView<ViewModel: FeedViewModelProtocol>: View {
             
             content
         }
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { stackWidth = $0 }
         .overlay(alignment: .top) { swipeErrorBanner }
+        .fullScreenCover(item: candidateBinding, onDismiss: handleCandidateDismiss) { candidate in
+            CandidateView(viewModel: candidate)
+                .navigationTransition(.zoom(sourceID: candidate.id, in: zoomNamespace))
+        }
         .task { await viewModel.load() }
         .task(id: viewModel.swipeErrorMessage) {
             guard viewModel.swipeErrorMessage != nil else { return }
@@ -147,7 +157,11 @@ struct FeedView<ViewModel: FeedViewModelProtocol>: View {
             ForEach(Array(cards.enumerated()).reversed(), id: \.element.id) { index, card in
                 let isTop = index == 0
                 FeedCardView(viewModel: card)
+                    .matchedTransitionSource(id: card.id, in: zoomNamespace) { source in
+                        source.clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.photoCard, style: .continuous))
+                    }
                     .overlay { if isTop { swipeTint } }
+                    .overlay(alignment: .bottomTrailing) { if isTop { openCandidateButton(cardID: card.id) } }
                     .scaleEffect(1 - 0.04 * CGFloat(index))
                     .offset(y: 10 * CGFloat(index))
                     .offset(x: isTop ? dragOffset.width : 0, y: isTop ? dragOffset.height : 0)
@@ -156,6 +170,7 @@ struct FeedView<ViewModel: FeedViewModelProtocol>: View {
                     .accessibilityHidden(!isTop)
                     .accessibilityAction(named: Text("Нравится")) { if isTop { swipe(liked: true, width: width) } }
                     .accessibilityAction(named: Text("Пропустить")) { if isTop { swipe(liked: false, width: width) } }
+                    .accessibilityAction(named: Text("Открыть анкету")) { if isTop { openCandidate(cardID: card.id) } }
                     .gesture(dragGesture(width: width))
             }
         }
@@ -245,6 +260,48 @@ struct FeedView<ViewModel: FeedViewModelProtocol>: View {
             }
         }
     }
+    
+    /// Стеклянная кнопка со стрелкой вверх: открывает анкету. Для VoiceOver есть действие «Открыть анкету».
+    /// - Parameter cardID: идентификатор верхней карточки.
+    private func openCandidateButton(cardID: UUID) -> some View {
+        Button {
+            openCandidate(cardID: cardID)
+        } label: {
+            Image(systemName: "arrow.up")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(Color.white)
+                .frame(width: 44, height: 44)
+                .background(Color.black.opacity(0.35), in: Circle())
+                .appGlass(in: Circle())
+        }
+        .padding(.trailing, AppTheme.Spacing.m)
+        .padding(.bottom, AppTheme.Size.likeButton + AppTheme.Spacing.l + AppTheme.Spacing.m)
+        .accessibilityHidden(true)
+    }
+
+    /// Открывает анкету, если карточка не летит и не перетаскивается.
+    /// - Parameter cardID: идентификатор карточки.
+    private func openCandidate(cardID: UUID) {
+        guard !isFlying, dragOffset == .zero else { return }
+        
+        viewModel.openCandidate(cardID: cardID)
+    }
+
+    /// Привязка для `fullScreenCover`: закрытие самим SwiftUI сбрасывает анкету в модели.
+    private var candidateBinding: Binding<ViewModel.Candidate?> {
+        Binding(
+            get: { viewModel.candidate },
+            set: { if $0 == nil { viewModel.closeCandidate() } }
+        )
+    }
+
+    /// После закрытия анкеты применяет итог: блокировка убирает карточку,
+    /// решение запускает обычный свайп с анимацией.
+    private func handleCandidateDismiss() {
+        guard let decision = viewModel.candidateDidDismiss() else { return }
+        
+        swipe(liked: decision == .like, width: stackWidth)
+    }
 }
 
 // MARK: - Заглушка для превью
@@ -256,6 +313,7 @@ final class FeedViewModelStub {
     var state: FeedState
     var visibleCards: [FeedCardViewModel]
     var swipeErrorMessage: String?
+    var candidate: CandidateViewModelStub?
     
     /// - Parameters:
     ///   - state: состояние экрана.
@@ -279,7 +337,7 @@ final class FeedViewModelStub {
     ]
 }
 
-extension FeedViewModelStub: FeedViewModelProtocol {
+extension FeedViewModelStub: @MainActor FeedViewModelProtocol {
     
     func load() async {}
     
@@ -296,6 +354,12 @@ extension FeedViewModelStub: FeedViewModelProtocol {
     func dismissSwipeError() {
         swipeErrorMessage = nil
     }
+    
+    func openCandidate(cardID: UUID) { candidate = CandidateViewModelStub() }
+
+    func closeCandidate() { candidate = nil }
+
+    func candidateDidDismiss() -> CandidateDecision? { nil }
 }
 
 #Preview("Лента") {
