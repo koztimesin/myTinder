@@ -99,33 +99,37 @@ extension SupabaseChatRepository: ChatRepositoryProtocol {
                 let channel = client.realtimeV2.channel(topic)
                 let inserts = channel.postgresChange(
                     InsertAction.self, schema: "public", table: "messages",
-                    filter: "match_id=eq.\(matchID.uuidString)"
+                    filter: .eq("match_id", value: matchID.uuidString)
                 )
                 let statuses = channel.statusChange
-                await channel.subscribe()
-                
-                let decoder = ChatDateCoding.makeRealtimeDecoder()
-                
-                await withTaskGroup(of: Void.self) { group in
-                    
-                    group.addTask {
-                        for await status in statuses where status == .subscribed {
-                            continuation.yield(.subscribed)
-                        }
-                    }
-                    
-                    group.addTask {
-                        for await action in inserts {
-                            if let dto = try? action.decodeRecord(as: MessageDTO.self, decoder: decoder) {
-                                continuation.yield(.message(dto.toDomain()))
+                do {
+                    try await channel.subscribeWithError()
+
+                    let decoder = ChatDateCoding.makeRealtimeDecoder()
+
+                    await withTaskGroup(of: Void.self) { group in
+
+                        group.addTask {
+                            for await status in statuses where status == .subscribed {
+                                continuation.yield(.subscribed)
                             }
                         }
+
+                        group.addTask {
+                            for await action in inserts {
+                                if let dto = try? action.decodeRecord(as: MessageDTO.self, decoder: decoder) {
+                                    continuation.yield(.message(dto.toDomain()))
+                                }
+                            }
+                        }
+
+                        await group.next()
+                        group.cancelAll()
                     }
-                    
-                    await group.next()
-                    group.cancelAll()
+                } catch {
+                    // Ошибка подписки завершает поток; `run()` повторит подключение.
                 }
-                
+
                 await client.realtimeV2.removeChannel(channel)
                 continuation.finish()
             }
