@@ -116,14 +116,22 @@ struct MainTabView: View {
         .fullScreenCover(item: celebrationBinding) { match in
             CelebrationPresenter { makeCelebrationViewModel(for: match) }
                 .id(match.id)
+                .interactiveDismissDisabled()
         }
     }
     
     // MARK: - Окно «Это матч»
     
-    /// Привязка к текущему окну. Закрывается только кнопками, поэтому запись игнорируется.
+    /// Привязка к текущему окну. Обычно оно закрывается кнопками;
+    /// setter оставляет store согласованным при принудительном системном закрытии.
     private var celebrationBinding: Binding<MatchSummary?> {
-        Binding(get: { matchesStore.currentCelebration }, set: { _ in })
+        Binding(
+            get: { matchesStore.currentCelebration },
+            set: { value in
+                guard value == nil, let current = matchesStore.currentCelebration else { return }
+                matchesStore.dismissCelebration(id: current.id)
+            }
+        )
     }
     
     /// Собирает модель окна «Это матч».

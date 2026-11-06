@@ -70,19 +70,33 @@ final class OnboardingViewModel {
     }
     
     /// Обрабатывает ошибку создания профиля.
-    /// Отмену не показывает. Если профиль уже существует (ответ на прошлую попытку потерялся),
-    /// завершает онбординг с найденным профилем. Остальное превращает в понятное сообщение.
-    private func handle(_ error: Error) async {
+    /// Отмену не показывает, остальное превращает в понятное сообщение.
+    private func handle(_ error: Error) {
         if error is CancellationError || (error as? URLError)?.code == .cancelled { return }
-        
-        if let profileError = error as? ProfileError, case .alreadyExists = profileError {
-            if let existing = try? await profiles.fetchMyProfile() {
+
+        errorMessage = Self.message(for: error)
+    }
+
+    /// Сверяет результат неудавшегося ответа с сервером перед удалением фотографий.
+    /// - Parameters:
+    ///   - originalError: исходная ошибка `create`.
+    ///   - uploadedPaths: пути, загруженные в этой попытке.
+    private func reconcileCreationFailure(_ originalError: Error, uploadedPaths: [String]) async {
+        do {
+            if let existing = try await profiles.fetchMyProfile() {
+                let referencedPaths = Set(existing.photoPaths)
+                await rollback(uploadedPaths.filter { !referencedPaths.contains($0) })
                 onCreated(existing)
                 return
             }
+
+            // Сервер подтвердил, что профиль не создан: все файлы этой попытки — сироты.
+            await rollback(uploadedPaths)
+        } catch {
+            // Состояние сервера неизвестно: файлы не удаляем, чтобы не сломать возможно созданный профиль.
         }
-        
-        errorMessage = Self.message(for: error)
+
+        handle(originalError)
     }
     
     /// Понятный пользователю текст вместо сырой ошибки.
@@ -247,8 +261,7 @@ extension OnboardingViewModel: OnboardingViewModelProtocol {
             let profile = try await profiles.create(newProfile)
             onCreated(profile)
         } catch {
-            await rollback(uploadedPaths)
-            await handle(error)
+            await reconcileCreationFailure(error, uploadedPaths: uploadedPaths)
         }
     }
     

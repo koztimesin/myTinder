@@ -11,9 +11,9 @@ import SwiftUI
 enum PhotoTileMetrics {
     
     /// Соотношение сторон: ширина к высоте.
-    static let aspectRatio: CGFloat = 3 / 4
+    nonisolated static let aspectRatio: CGFloat = 3 / 4
     /// Радиус скругления.
-    static let cornerRadius: CGFloat = 12
+    nonisolated static let cornerRadius: CGFloat = 12
 }
 
 struct PhotoTileView: View {

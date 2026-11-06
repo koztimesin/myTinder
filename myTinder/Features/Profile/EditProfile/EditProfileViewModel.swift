@@ -116,9 +116,20 @@ final class EditProfileViewModel {
         do {
             let updated = try await profiles.update(changes(photoPaths: profile.photoPaths + [path]))
             apply(updated)
-        } catch {
-            await discard(path)
-            throw error
+        } catch let updateError {
+            do {
+                if let fresh = try await profiles.fetchMyProfile(), fresh.photoPaths.contains(path) {
+                    // Update успел зафиксироваться, а клиент потерял ответ: считаем операцию успешной.
+                    apply(fresh)
+                    return
+                }
+
+                // Сервер подтвердил, что путь не используется профилем.
+                await discard(path)
+            } catch {
+                // Состояние update неизвестно: оставляем файл для безопасности.
+            }
+            throw updateError
         }
     }
     

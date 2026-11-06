@@ -52,13 +52,13 @@ extension SupabaseMatchRepository: MatchRepositoryProtocol {
                     // Пользователь в паре бывает и user_a, и user_b, а фильтр допускает одно условие.
                     let userA = channel.postgresChange(
                         InsertAction.self, schema: "public", table: "matches",
-                        filter: "user_a=eq.\(userID)"
+                        filter: .eq("user_a", value: userID)
                     )
                     let userB = channel.postgresChange(
                         InsertAction.self, schema: "public", table: "matches",
-                        filter: "user_b=eq.\(userID)"
+                        filter: .eq("user_b", value: userID)
                     )
-                    await channel.subscribe()
+                    try await channel.subscribeWithError()
                     
                     await withTaskGroup(of: Void.self) { group in
                         
@@ -74,6 +74,11 @@ extension SupabaseMatchRepository: MatchRepositoryProtocol {
                                 }
                             }
                         }
+
+                        // Обрыв любого из двух фильтров закрывает весь канал,
+                        // чтобы внешний цикл открыл новую подписку.
+                        await group.next()
+                        group.cancelAll()
                     }
                     
                     await client.realtimeV2.removeChannel(channel)
@@ -96,12 +101,16 @@ extension SupabaseMatchRepository: MatchRepositoryProtocol {
                 let topic = "messages-\(UUID().uuidString.prefix(8))"
                 let channel = client.realtimeV2.channel(topic)
                 let inserts = channel.postgresChange(InsertAction.self, schema: "public", table: "messages")
-                await channel.subscribe()
-                
-                for await _ in inserts {
-                    continuation.yield()
+                do {
+                    try await channel.subscribeWithError()
+
+                    for await _ in inserts {
+                        continuation.yield()
+                    }
+                } catch {
+                    // Ошибка подписки завершает поток; `MatchesStore` откроет его заново.
                 }
-                
+
                 await client.realtimeV2.removeChannel(channel)
                 continuation.finish()
             }

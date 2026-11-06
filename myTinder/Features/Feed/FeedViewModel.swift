@@ -111,6 +111,10 @@ final class FeedViewModel {
     private var isLoadingBatch = false
     /// Номер «поколения» ленты; растёт при `reload`, чтобы отбросить устаревшие ответы.
     private var generation = 0
+    /// Карточки, свайп по которым ещё не подтверждён сервером.
+    private var pendingSwipeIDs: Set<UUID> = []
+    /// Карточки с подтверждённым свайпом; не даём устаревшему `get_feed` вернуть их после `reload`.
+    private var completedSwipeIDs: Set<UUID> = []
     
     @ObservationIgnored private let useCase: any FeedUseCaseProtocol
     @ObservationIgnored private let photoURLProvider: any PhotoURLProviderProtocol
@@ -171,6 +175,7 @@ final class FeedViewModel {
         guard let card = queue.first else { return }
         queue.removeFirst()
         photoURLs[card.id] = nil
+        pendingSwipeIDs.insert(card.id)
         swipeErrorMessage = nil
         updateState()
         Task { await send(card, liked: liked) }
@@ -181,8 +186,13 @@ final class FeedViewModel {
     private func send(_ card: FeedCard, liked: Bool) async {
         do {
             try await useCase.swipe(on: card, liked: liked)
+            pendingSwipeIDs.remove(card.id)
+            completedSwipeIDs.insert(card.id)
         } catch {
-            queue.insert(card, at: 0)
+            pendingSwipeIDs.remove(card.id)
+            if !queue.contains(where: { $0.id == card.id }) {
+                queue.insert(card, at: 0)
+            }
             updateState()
             swipeErrorMessage = "Не удалось сохранить выбор. Попробуйте ещё раз."
             await resolveVisiblePhotos()
@@ -209,7 +219,10 @@ final class FeedViewModel {
             if batch.isEmpty {
                 hasMore = false
             } else {
-                queue.append(contentsOf: batch)
+                let existingIDs = Set(queue.map(\.id))
+                let excludedIDs = pendingSwipeIDs.union(completedSwipeIDs)
+                let fresh = batch.filter { !existingIDs.contains($0.id) && !excludedIDs.contains($0.id) }
+                queue.append(contentsOf: fresh)
             }
             updateState()
             await resolveVisiblePhotos()
