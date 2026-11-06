@@ -126,7 +126,6 @@ struct FeedCardView: View {
                     placeholder(systemImage: nil)
                 }
             }
-            .id(url)
         } else {
             placeholder(systemImage: nil)
         }
