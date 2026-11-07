@@ -21,6 +21,7 @@ final class AppContainer {
     lazy var matchRepository: MatchRepositoryProtocol = SupabaseMatchRepository(client: supabase)
     lazy var chatRepository: ChatRepositoryProtocol = SupabaseChatRepository(client: supabase)
     lazy var moderationRepository: ModerationRepositoryProtocol = SupabaseModerationRepository(client: supabase)
+    lazy var accountRepository: AccountRepositoryProtocol = SupabaseAccountRepository(client: supabase)
 
     
     init() {
@@ -74,6 +75,11 @@ final class AppContainer {
         onOpenDeleteAccount: @escaping @MainActor () -> Void
     ) -> SettingsViewModel {
         SettingsViewModel(onOpenDeleteAccount: onOpenDeleteAccount)
+    }
+
+    /// Собирает модель окончательного удаления аккаунта.
+    func makeDeleteAccountViewModel() -> DeleteAccountViewModel {
+        DeleteAccountViewModel(repository: accountRepository)
     }
     
     /// Собирает модель экрана ленты.

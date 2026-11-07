@@ -160,7 +160,7 @@ struct MainTabView: View {
         case .settings:
             SettingsPresenter { makeSettingsViewModel() }
         case .deleteAccount:
-            DeleteAccountView()
+            DeleteAccountPresenter { container.makeDeleteAccountViewModel() }
         }
     }
 
@@ -271,5 +271,20 @@ private struct SettingsPresenter: View {
 
     var body: some View {
         SettingsView(viewModel: viewModel)
+    }
+}
+
+/// Создаёт модель удаления аккаунта один раз на открытие экрана.
+private struct DeleteAccountPresenter: View {
+
+    @State private var viewModel: DeleteAccountViewModel
+
+    /// - Parameter makeViewModel: фабрика модели, вызываемая один раз при создании.
+    init(makeViewModel: () -> DeleteAccountViewModel) {
+        _viewModel = State(initialValue: makeViewModel())
+    }
+
+    var body: some View {
+        DeleteAccountView(viewModel: viewModel)
     }
 }
