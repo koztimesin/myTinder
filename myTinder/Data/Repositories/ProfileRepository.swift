@@ -32,6 +32,8 @@ struct NewProfile: Sendable {
     let gender: Gender
     let interestedIn: [Gender]
     let photoPaths: [String]
+    var minAge = ProfileValidation.minimumDiscoveryAge
+    var maxAge = ProfileValidation.maximumDiscoveryAge
 }
 
 struct ProfileChanges: Sendable {
@@ -39,6 +41,8 @@ struct ProfileChanges: Sendable {
     var bio: String?
     var interestedIn: [Gender]
     var photoPaths: [String]
+    var minAge: Int
+    var maxAge: Int
 }
 
 protocol ProfileRepositoryProtocol: Sendable {

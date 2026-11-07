@@ -17,6 +17,8 @@ final class EditProfileViewModel {
     
     var bio: String
     var interest: InterestOption?
+    var minAge: Double
+    var maxAge: Double
     
     // MARK: Состояние
     
@@ -34,6 +36,8 @@ final class EditProfileViewModel {
     private let photoRepository: PhotoRepositoryProtocol
     private let urlProvider: PhotoURLProviderProtocol
     private let onUpdated: @MainActor (Profile) -> Void
+    private let onDiscoveryUpdated: @MainActor () -> Void
+    private let onOpenSettings: @MainActor () -> Void
     private let onSignOut: @MainActor () -> Void
     
     /// - Parameters:
@@ -42,6 +46,8 @@ final class EditProfileViewModel {
     ///   - photoRepository: репозиторий фото.
     ///   - urlProvider: источник временных ссылок на фото.
     ///   - onUpdated: вызывается после каждого успешного изменения профиля (обычно `ProfileStore.didUpdate`).
+    ///   - onDiscoveryUpdated: перезагружает ленту после изменения фильтров.
+    ///   - onOpenSettings: открывает настройки выдачи ленты.
     ///   - onSignOut: выход из аккаунта.
     init(
         profile: Profile,
@@ -49,15 +55,21 @@ final class EditProfileViewModel {
         photoRepository: PhotoRepositoryProtocol,
         urlProvider: PhotoURLProviderProtocol,
         onUpdated: @escaping @MainActor (Profile) -> Void,
+        onDiscoveryUpdated: @escaping @MainActor () -> Void,
+        onOpenSettings: @escaping @MainActor () -> Void,
         onSignOut: @escaping @MainActor () -> Void
     ) {
         self.profile = profile
         self.bio = profile.bio ?? ""
         self.interest = InterestOption(genders: profile.interestedIn)
+        self.minAge = Double(profile.minAge)
+        self.maxAge = Double(profile.maxAge)
         self.profiles = profiles
         self.photoRepository = photoRepository
         self.urlProvider = urlProvider
         self.onUpdated = onUpdated
+        self.onDiscoveryUpdated = onDiscoveryUpdated
+        self.onOpenSettings = onOpenSettings
         self.onSignOut = onSignOut
     }
     
@@ -98,7 +110,9 @@ final class EditProfileViewModel {
         ProfileChanges(
             bio: profile.bio,
             interestedIn: profile.interestedIn,
-            photoPaths: photoPaths
+            photoPaths: photoPaths,
+            minAge: profile.minAge,
+            maxAge: profile.maxAge
         )
     }
     
@@ -107,7 +121,7 @@ final class EditProfileViewModel {
         profile = updated
         onUpdated(updated)
     }
-    
+
     /// Загружает файл, затем добавляет его путь в профиль. Если запись пути не удалась,
     /// файл удаляется, чтобы в Storage не копились «сироты».
     private func attach(_ jpeg: Data) async throws {
@@ -168,6 +182,8 @@ final class EditProfileViewModel {
     private func fillForm(from profile: Profile) {
         bio = profile.bio ?? ""
         interest = InterestOption(genders: profile.interestedIn)
+        minAge = Double(profile.minAge)
+        maxAge = Double(profile.maxAge)
     }
     
     /// Удаляет фото. Сначала обновляется массив на сервере, потом удаляется файл:
@@ -245,15 +261,23 @@ extension EditProfileViewModel: EditProfileViewModelProtocol {
     /// Некорректные значения считаются изменением; кнопку при этом блокирует `canSave`.
     private var hasChanges: Bool {
         guard case .success(let cleanBio) = ProfileValidation.normalizedBio(bio) else { return true }
-        
-        let currentInterest: Set<Gender>? = interest.map { Set($0.genders) }
-        
+
+        let selectedGenders = interest.map { Set($0.genders) }
         return cleanBio != profile.bio
-            || currentInterest != Set(profile.interestedIn)
+            || selectedGenders != Set(profile.interestedIn)
+            || Int(minAge.rounded()) != profile.minAge
+            || Int(maxAge.rounded()) != profile.maxAge
     }
 
     var canSave: Bool {
-        !isBusy && hasChanges && interest != nil && !isBioTooLong
+        !isBusy
+            && hasChanges
+            && interest != nil
+            && !isBioTooLong
+            && ProfileValidation.isValidDiscoveryAgeRange(
+                minAge: Int(minAge.rounded()),
+                maxAge: Int(maxAge.rounded())
+            )
     }
     
     func load() async {
@@ -299,17 +323,37 @@ extension EditProfileViewModel: EditProfileViewModelProtocol {
                 errorMessage = "Проверьте имя и описание."
                 return
             }
-            
+
+            let minAge = Int(minAge.rounded())
+            let maxAge = Int(maxAge.rounded())
+            guard ProfileValidation.isValidDiscoveryAgeRange(minAge: minAge, maxAge: maxAge) else {
+                errorMessage = "Проверьте возрастной диапазон."
+                return
+            }
+
+            let discoveryChanged = Set(interest.genders) != Set(profile.interestedIn)
+                || minAge != profile.minAge
+                || maxAge != profile.maxAge
+
             let edited = ProfileChanges(
                 bio: cleanBio,
                 interestedIn: interest.genders,
-                photoPaths: profile.photoPaths
+                photoPaths: profile.photoPaths,
+                minAge: minAge,
+                maxAge: maxAge
             )
             
             let updated = try await profiles.update(edited)
             apply(updated)
             fillForm(from: updated)
+            if discoveryChanged {
+                onDiscoveryUpdated()
+            }
         }
+    }
+
+    func openSettings() {
+        onOpenSettings()
     }
     
     func signOut() {

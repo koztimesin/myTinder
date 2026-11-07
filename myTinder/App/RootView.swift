@@ -11,20 +11,28 @@ struct RootView: View {
     
     let session: SessionStore
     let container: AppContainer
+    @AppStorage(AppAppearance.storageKey) private var appearanceRawValue = AppAppearance.system.rawValue
     
     var body: some View {
         
-        switch session.state {
-            
-        case .loading:
-            ProgressView()
-            
-        case .signedOut:
-            AuthView(viewModel: AuthViewModel(auth: container.authRepository))
-            
-        case .signedIn(let user):
-            ProfileGateView(session: session, container: container)
-                .id(user.id)
+        Group {
+            switch session.state {
+            case .loading:
+                ProgressView()
+
+            case .signedOut:
+                AuthView(viewModel: AuthViewModel(auth: container.authRepository))
+
+            case .signedIn(let user):
+                ProfileGateView(session: session, container: container)
+                    .id(user.id)
+            }
         }
+        .preferredColorScheme(appearance.colorScheme)
+    }
+
+    /// Выбранный режим оформления с безопасным откатом к системному.
+    private var appearance: AppAppearance {
+        AppAppearance(rawValue: appearanceRawValue) ?? .system
     }
 }

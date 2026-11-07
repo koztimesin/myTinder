@@ -61,7 +61,9 @@ extension SupabaseProfileRepository: ProfileRepositoryProtocol {
             bio: new.bio,
             gender: new.gender.rawValue,
             interestedIn: new.interestedIn.map(\.rawValue),
-            photoPaths: new.photoPaths
+            photoPaths: new.photoPaths,
+            minAge: new.minAge,
+            maxAge: new.maxAge
         )
         
         do {
@@ -80,7 +82,9 @@ extension SupabaseProfileRepository: ProfileRepositoryProtocol {
         let dto = ProfileUpdateDTO(
             bio: changes.bio,
             interestedIn: changes.interestedIn.map(\.rawValue),
-            photoPaths: changes.photoPaths
+            photoPaths: changes.photoPaths,
+            minAge: changes.minAge,
+            maxAge: changes.maxAge
         )
         
         let row: ProfileDTO = try await client
