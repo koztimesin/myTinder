@@ -28,47 +28,53 @@ struct EditProfileView<ViewModel: EditProfileViewModelProtocol>: View {
     var body: some View {
         @Bindable var vm = viewModel
 
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: AppTheme.Spacing.l) {
-                    photoSection
-                    identitySection
-                    interestSection(selection: $vm.interest)
+        ScrollView {
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.l) {
+                photoSection
+                identitySection
+                interestSection(selection: $vm.interest)
+                ageSection(minAge: $vm.minAge, maxAge: $vm.maxAge)
 
-                    ProfileFormSection("О себе", subtitle: "Добавьте детали, с которых легко начать разговор") {
-                        ProfileBioEditor(text: $vm.bio, isTooLong: vm.isBioTooLong, limit: 500)
-                    }
-
-                    if let message = vm.errorMessage {
-                        ErrorBannerView(viewModel: ErrorBannerViewModel(message: message))
-                    }
+                ProfileFormSection("О себе", subtitle: "Добавьте детали, с которых легко начать разговор") {
+                    ProfileBioEditor(text: $vm.bio, isTooLong: vm.isBioTooLong, limit: 500)
                 }
-                .padding(.horizontal, AppTheme.Spacing.m)
-                .padding(.top, AppTheme.Spacing.s)
-                .padding(.bottom, AppTheme.Spacing.l)
-            }
-            .scrollDismissesKeyboard(.interactively)
-            .background(AppTheme.Colors.background)
-            .navigationTitle("Мой профиль")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Выйти", role: .destructive) { vm.signOut() }
-                        .foregroundStyle(AppTheme.Colors.danger)
-                        .disabled(vm.isBusy)
+
+                if let message = vm.errorMessage {
+                    ErrorBannerView(viewModel: ErrorBannerViewModel(message: message))
                 }
             }
-            .safeAreaInset(edge: .bottom) { bottomBar }
-            .disabled(vm.isBusy)
-            .overlay { busyOverlay }
-            .task { await vm.load() }
-            .onChange(of: pickerItems) { _, items in
-                guard !items.isEmpty else { return }
-
-                Task {
-                    await vm.addPhotos(from: items)
-                    pickerItems = []
+            .padding(.horizontal, AppTheme.Spacing.m)
+            .padding(.top, AppTheme.Spacing.s)
+            .padding(.bottom, AppTheme.Spacing.l)
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .background(AppTheme.Colors.background)
+        .navigationTitle("Мой профиль")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button("Выйти", role: .destructive) { vm.signOut() }
+                    .foregroundStyle(AppTheme.Colors.danger)
+                    .disabled(vm.isBusy)
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button(action: vm.openSettings) {
+                    Label("Настройки", systemImage: "gearshape")
                 }
+                .foregroundStyle(AppTheme.Colors.accentText)
+                .disabled(vm.isBusy)
+            }
+        }
+        .safeAreaInset(edge: .bottom) { bottomBar }
+        .disabled(vm.isBusy)
+        .overlay { busyOverlay }
+        .task { await vm.load() }
+        .onChange(of: pickerItems) { _, items in
+            guard !items.isEmpty else { return }
+
+            Task {
+                await vm.addPhotos(from: items)
+                pickerItems = []
             }
         }
     }
@@ -98,17 +104,37 @@ struct EditProfileView<ViewModel: EditProfileViewModelProtocol>: View {
         }
     }
 
-    /// Выбор того, кого хочет видеть пользователь.
-    /// - Parameter selection: текущий выбор.
+    /// Выбор пола кандидатов, показываемых в ленте.
+    /// - Parameter selection: выбранный вариант.
     private func interestSection(selection: Binding<InterestOption?>) -> some View {
-        ProfileFormSection("Кого ищете") {
-            Picker("Кого ищете", selection: selection) {
+        ProfileFormSection("Кого показывать") {
+            Picker("Кого показывать", selection: selection) {
                 ForEach(InterestOption.allCases) { option in
                     Text(option.title).tag(InterestOption?.some(option))
                 }
             }
             .pickerStyle(.segmented)
             .tint(AppTheme.Colors.accent)
+        }
+    }
+
+    /// Выбор возрастного диапазона кандидатов.
+    /// - Parameters:
+    ///   - minAge: нижняя граница возраста.
+    ///   - maxAge: верхняя граница возраста.
+    private func ageSection(
+        minAge: Binding<Double>,
+        maxAge: Binding<Double>
+    ) -> some View {
+        ProfileFormSection(
+            "Возраст",
+            subtitle: "От \(Int(minAge.wrappedValue)) до \(Int(maxAge.wrappedValue)) лет"
+        ) {
+            AgeRangeSlider(
+                lowerValue: minAge,
+                upperValue: maxAge,
+                in: Double(ProfileValidation.minimumDiscoveryAge)...Double(ProfileValidation.maximumDiscoveryAge)
+            )
         }
     }
 

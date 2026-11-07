@@ -12,6 +12,14 @@ enum MainTab: Hashable {
     case feed, matches, profile
 }
 
+/// Маршруты внутри вкладки профиля.
+enum ProfileRoute: Hashable {
+    /// Настройки выдачи ленты.
+    case settings
+    /// Подготовка к удалению аккаунта.
+    case deleteAccount
+}
+
 /// Хранит выбранную вкладку, чтобы её могли переключать модели экранов.
 @MainActor
 @Observable
@@ -22,10 +30,22 @@ final class MainTabRouter {
     
     /// Открытые чаты во вкладке «Матчи» (идентификаторы матчей).
     var matchesPath: [UUID] = []
+    /// Открытые экраны во вкладке «Профиль».
+    var profilePath: [ProfileRoute] = []
     
     func openChat(_ matchID: UUID) {
         selectedTab = .matches
         matchesPath = [matchID]
+    }
+
+    /// Открывает настройки во вкладке профиля.
+    func openSettings() {
+        profilePath.append(.settings)
+    }
+
+    /// Открывает экран удаления аккаунта.
+    func openDeleteAccount() {
+        profilePath.append(.deleteAccount)
     }
 }
 
@@ -48,6 +68,8 @@ struct MainTabView: View {
     @State private var matchesStore: MatchesStore
     /// Модель экрана «Матчи».
     @State private var matchesViewModel: MatchesViewModel
+    /// Модель профиля живёт вместе с хостом и принимает изменения из настроек.
+    @State private var editProfileViewModel: EditProfileViewModel
     
     @Environment(\.scenePhase) private var scenePhase
     
@@ -66,7 +88,9 @@ struct MainTabView: View {
         self.profile = profile
         self.onProfileUpdated = onProfileUpdated
         self.onSignOut = onSignOut
-        _feedViewModel = State(initialValue: container.makeFeedViewModel())
+
+        let feedViewModel = container.makeFeedViewModel()
+        _feedViewModel = State(initialValue: feedViewModel)
         
         let router = MainTabRouter()
         let store = container.makeMatchesStore()
@@ -76,6 +100,13 @@ struct MainTabView: View {
             store: store,
             onOpenFeed: { router.selectedTab = .feed },
             onSelectMatch: { id in router.openChat(id) }
+        ))
+        _editProfileViewModel = State(initialValue: container.makeEditProfileViewModel(
+            profile: profile,
+            onUpdated: onProfileUpdated,
+            onDiscoveryUpdated: { Task { await feedViewModel.reload() } },
+            onOpenSettings: { router.openSettings() },
+            onSignOut: onSignOut
         ))
     }
     
@@ -97,13 +128,12 @@ struct MainTabView: View {
             .badge(matchesStore.unreadTotal)
             
             Tab("Профиль", systemImage: "person.crop.circle", value: MainTab.profile) {
-                EditProfileView(
-                    viewModel: container.makeEditProfileViewModel(
-                        profile: profile,
-                        onUpdated: onProfileUpdated,
-                        onSignOut: onSignOut
-                    )
-                )
+                NavigationStack(path: $router.profilePath) {
+                    EditProfileView(viewModel: editProfileViewModel)
+                        .navigationDestination(for: ProfileRoute.self) { route in
+                            profileDestination(for: route)
+                        }
+                }
             }
         }
         .tint(AppTheme.Colors.accentText)
@@ -121,6 +151,24 @@ struct MainTabView: View {
     }
     
     // MARK: - Окно «Это матч»
+
+    /// Экран для маршрута вкладки профиля.
+    /// - Parameter route: выбранный маршрут.
+    @ViewBuilder
+    private func profileDestination(for route: ProfileRoute) -> some View {
+        switch route {
+        case .settings:
+            SettingsPresenter { makeSettingsViewModel() }
+        case .deleteAccount:
+            DeleteAccountView()
+        }
+    }
+
+    /// Собирает общие настройки приложения.
+    /// - Returns: модель с маршрутом удаления аккаунта.
+    private func makeSettingsViewModel() -> SettingsViewModel {
+        container.makeSettingsViewModel(onOpenDeleteAccount: router.openDeleteAccount)
+    }
     
     /// Привязка к текущему окну. Обычно оно закрывается кнопками;
     /// setter оставляет store согласованным при принудительном системном закрытии.
@@ -208,5 +256,20 @@ private struct ChatPresenter: View {
     
     var body: some View {
         ChatView(viewModel: viewModel)
+    }
+}
+
+/// Создаёт модель настроек один раз на открытие экрана.
+private struct SettingsPresenter: View {
+
+    @State private var viewModel: SettingsViewModel
+
+    /// - Parameter makeViewModel: фабрика модели, вызываемая один раз при создании.
+    init(makeViewModel: () -> SettingsViewModel) {
+        _viewModel = State(initialValue: makeViewModel())
+    }
+
+    var body: some View {
+        SettingsView(viewModel: viewModel)
     }
 }

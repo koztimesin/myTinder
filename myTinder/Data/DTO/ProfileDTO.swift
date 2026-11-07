@@ -15,12 +15,16 @@ struct ProfileDTO: Decodable {
     let gender: String?
     let interestedIn: [String]?
     let photoPaths: [String]?
+    let minAge: Int?
+    let maxAge: Int?
     
     enum CodingKeys: String, CodingKey {
         case id, name, bio, gender
         case birthDate = "birth_date"
         case interestedIn = "interested_in"
         case photoPaths = "photo_paths"
+        case minAge = "min_age"
+        case maxAge = "max_age"
     }
 }
 
@@ -32,12 +36,16 @@ struct ProfileInsertDTO: Encodable {
     let gender: String
     let interestedIn: [String]
     let photoPaths: [String]
+    let minAge: Int
+    let maxAge: Int
     
     enum CodingKeys: String, CodingKey {
         case id, name, bio, gender
         case birthDate = "birth_date"
         case interestedIn = "interested_in"
         case photoPaths = "photo_paths"
+        case minAge = "min_age"
+        case maxAge = "max_age"
     }
     
     func encode(to encoder: Encoder) throws {
@@ -49,6 +57,8 @@ struct ProfileInsertDTO: Encodable {
         try c.encode(gender, forKey: .gender)
         try c.encode(interestedIn, forKey: .interestedIn)
         try c.encode(photoPaths, forKey: .photoPaths)
+        try c.encode(minAge, forKey: .minAge)
+        try c.encode(maxAge, forKey: .maxAge)
     }
 }
 
@@ -57,11 +67,15 @@ struct ProfileUpdateDTO: Encodable {
     let bio: String?
     let interestedIn: [String]
     let photoPaths: [String]
+    let minAge: Int
+    let maxAge: Int
     
     enum CodingKeys: String, CodingKey {
         case bio
         case interestedIn = "interested_in"
         case photoPaths = "photo_paths"
+        case minAge = "min_age"
+        case maxAge = "max_age"
     }
     
     func encode(to encoder: Encoder) throws {
@@ -69,6 +83,8 @@ struct ProfileUpdateDTO: Encodable {
         try c.encode(bio, forKey: .bio)
         try c.encode(interestedIn, forKey: .interestedIn)
         try c.encode(photoPaths, forKey: .photoPaths)
+        try c.encode(minAge, forKey: .minAge)
+        try c.encode(maxAge, forKey: .maxAge)
     }
 }
 
@@ -99,11 +115,18 @@ extension ProfileDTO {
               let gender = gender.flatMap(Gender.init(rawValue:)) else {
             throw ProfileError.invalidData
         }
-        
+
+        let defaultAgeRange = ProfileValidation.defaultDiscoveryAgeRange(
+            birthDate: date,
+            calendar: .utc
+        )
+
         return Profile(
             id: id, name: name, birthDate: date, bio: bio, gender: gender,
             interestedIn: (interestedIn ?? []).compactMap(Gender.init(rawValue:)),
-            photoPaths: photoPaths ?? []
+            photoPaths: photoPaths ?? [],
+            minAge: minAge ?? defaultAgeRange.lowerBound,
+            maxAge: maxAge ?? defaultAgeRange.upperBound
         )
     }
 }

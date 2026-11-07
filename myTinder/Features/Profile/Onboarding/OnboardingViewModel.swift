@@ -250,13 +250,19 @@ extension OnboardingViewModel: OnboardingViewModelProtocol {
                 uploadedPaths.append(try await photoRepository.upload(photo.jpegData))
                 uploadedCount += 1
             }
+            let defaultAgeRange = ProfileValidation.defaultDiscoveryAgeRange(
+                birthDate: birth,
+                calendar: .utc
+            )
             let newProfile = NewProfile(
                 name: cleanName,
                 birthDate: birth,
                 bio: cleanBio,
                 gender: gender,
                 interestedIn: interest.genders,
-                photoPaths: uploadedPaths
+                photoPaths: uploadedPaths,
+                minAge: defaultAgeRange.lowerBound,
+                maxAge: defaultAgeRange.upperBound
             )
             let profile = try await profiles.create(newProfile)
             onCreated(profile)

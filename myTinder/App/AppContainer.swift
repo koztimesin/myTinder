@@ -44,11 +44,15 @@ final class AppContainer {
     /// - Parameters:
     ///   - profile: текущий профиль.
     ///   - onUpdated: что делать после успешного изменения профиля.
+    ///   - onDiscoveryUpdated: обновить ленту после изменения фильтров.
+    ///   - onOpenSettings: открыть настройки выдачи.
     ///   - onSignOut: что делать при выходе.
     @MainActor
     func makeEditProfileViewModel(
         profile: Profile,
         onUpdated: @escaping @MainActor (Profile) -> Void,
+        onDiscoveryUpdated: @escaping @MainActor () -> Void,
+        onOpenSettings: @escaping @MainActor () -> Void,
         onSignOut: @escaping @MainActor () -> Void
     ) -> EditProfileViewModel {
         EditProfileViewModel(
@@ -57,8 +61,19 @@ final class AppContainer {
             photoRepository: photoRepository,
             urlProvider: photoURLProvider,
             onUpdated: onUpdated,
+            onDiscoveryUpdated: onDiscoveryUpdated,
+            onOpenSettings: onOpenSettings,
             onSignOut: onSignOut
         )
+    }
+
+    /// Собирает модель общих настроек приложения.
+    /// - Parameter onOpenDeleteAccount: открывает экран удаления аккаунта.
+    /// - Returns: модель экрана настроек.
+    func makeSettingsViewModel(
+        onOpenDeleteAccount: @escaping @MainActor () -> Void
+    ) -> SettingsViewModel {
+        SettingsViewModel(onOpenDeleteAccount: onOpenDeleteAccount)
     }
     
     /// Собирает модель экрана ленты.
