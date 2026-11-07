@@ -61,6 +61,14 @@ fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
 Secrets.xcconfig
+AGENTS.md
+
+# Supabase CLI local state and secrets
+/supabase/.branches/
+/supabase/.temp/
+/supabase/.env
+/supabase/functions/.env
+supabase
 schema.sql
 settings_migration.sql
-AGENTS.md
+supabase/
