@@ -38,6 +38,13 @@ final class MainTabRouter {
         matchesPath = [matchID]
     }
 
+    /// Закрывает открытый чат, если соответствующего матча больше нет.
+    /// - Parameter matchIDs: актуальные идентификаторы матчей пользователя.
+    func closeMissingChat(matchIDs: Set<UUID>) {
+        guard let openMatchID = matchesPath.last, !matchIDs.contains(openMatchID) else { return }
+        matchesPath = []
+    }
+
     /// Открывает настройки во вкладке профиля.
     func openSettings() {
         profilePath.append(.settings)
@@ -142,6 +149,10 @@ struct MainTabView: View {
             if phase == .active {
                 Task { await matchesStore.reload() }
             }
+        }
+        .onChange(of: matchesStore.matches.map(\.id)) { _, matchIDs in
+            guard matchesStore.isLoaded else { return }
+            router.closeMissingChat(matchIDs: Set(matchIDs))
         }
         .fullScreenCover(item: celebrationBinding) { match in
             CelebrationPresenter { makeCelebrationViewModel(for: match) }
