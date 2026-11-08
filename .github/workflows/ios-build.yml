@@ -62,3 +62,17 @@ jobs:
             -disableAutomaticPackageResolution \
             CODE_SIGNING_ALLOWED=NO \
             build
+
+      - name: Run unit tests
+        run: |
+          xcodebuild \
+            -project myTinder.xcodeproj \
+            -scheme myTinder \
+            -configuration Debug \
+            -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2' \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            -clonedSourcePackagesDirPath "$RUNNER_TEMP/SourcePackages" \
+            -disableAutomaticPackageResolution \
+            -only-testing:myTinderTests \
+            CODE_SIGNING_ALLOWED=NO \
+            test

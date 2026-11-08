@@ -16,16 +16,23 @@ final class SettingsViewModel {
     /// Выбранная тема; изменение сразу сохраняется для следующих запусков.
     var appearance: AppAppearance {
         didSet {
-            UserDefaults.standard.set(appearance.rawValue, forKey: AppAppearance.storageKey)
+            defaults.set(appearance.rawValue, forKey: AppAppearance.storageKey)
         }
     }
 
     private let onOpenDeleteAccount: @MainActor () -> Void
+    private let defaults: UserDefaults
 
     /// Создаёт модель из сохранённой темы.
-    /// - Parameter onOpenDeleteAccount: открывает экран удаления аккаунта.
-    init(onOpenDeleteAccount: @escaping @MainActor () -> Void) {
-        let rawValue = UserDefaults.standard.string(forKey: AppAppearance.storageKey)
+    /// - Parameters:
+    ///   - defaults: хранилище выбранной темы.
+    ///   - onOpenDeleteAccount: открывает экран удаления аккаунта.
+    init(
+        defaults: UserDefaults = .standard,
+        onOpenDeleteAccount: @escaping @MainActor () -> Void
+    ) {
+        self.defaults = defaults
+        let rawValue = defaults.string(forKey: AppAppearance.storageKey)
         appearance = rawValue.flatMap(AppAppearance.init(rawValue:)) ?? .system
         self.onOpenDeleteAccount = onOpenDeleteAccount
     }
