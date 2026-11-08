@@ -24,7 +24,9 @@ struct ProfileGateView: View {
             switch store.state {
                 
             case .checking:
-                ProgressView()
+                LoadingIndicatorView(
+                    viewModel: LoadingIndicatorViewModel(title: "Загружаем профиль")
+                )
                 
             case .needsProfile:
                 OnboardingView(
@@ -51,24 +53,24 @@ struct ProfileGateView: View {
                 )
                 
             case .failed(let message):
-                VStack(spacing: 16) {
-                    
-                    Text(message)
-                    
+                VStack(spacing: AppTheme.Spacing.m) {
+                    ErrorBannerView(viewModel: ErrorBannerViewModel(message: message))
+
                     Button("Повторить") {
-                        Task {
-                            await store.load()
-                        }
+                        Task { await store.load() }
                     }
+                    .buttonStyle(.app(.primary))
                     
                     Button("Выйти", role: .destructive) {
-                        Task {
-                            await session.signOut()
-                        }
+                        Task { await session.signOut() }
                     }
+                    .buttonStyle(.app(.destructiveOutline))
                 }
+                .padding(AppTheme.Spacing.l)
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(AppTheme.Colors.background)
         .task {
             await store.load()
         }
