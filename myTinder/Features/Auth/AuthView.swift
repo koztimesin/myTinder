@@ -42,7 +42,9 @@ struct AuthView<ViewModel: AuthViewModelProtocol>: View {
                     AppTextFieldView(
                         viewModel: AppTextFieldViewModel(
                             title: "Пароль",
-                            placeholder: "Минимум 6 символов",
+                            placeholder: viewModel.modeState == .signUp
+                                ? "Минимум 8 символов"
+                                : "Введите пароль",
                             isSecure: true,
                             textContentType: viewModel.modeState == .signUp ? .newPassword : .password
                         ),
@@ -150,7 +152,10 @@ private final class AuthPreviewViewModel: AuthViewModelProtocol {
     var modeState: AuthViewModel.Mode = .signIn
     var emailText = ""
     var passwordText = ""
-    var canSubmit: Bool { emailText.contains("@") && passwordText.count >= 6 }
+    var canSubmit: Bool {
+        let minimumPasswordLength = modeState == .signUp ? 8 : 6
+        return emailText.contains("@") && passwordText.count >= minimumPasswordLength
+    }
     var isLoadingState = false
     var errorMessageText: String?
     var infoMessageText: String?
