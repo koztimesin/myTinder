@@ -96,16 +96,30 @@ create table public.reports (
 -- 2. ФУНКЦИИ
 -- =========================================================
 
+-- Внутренние функции живут вне схемы, доступной через Data API.
+create schema if not exists private;
+revoke all on schema private from public, anon;
+grant usage on schema private to authenticated;
+
+-- Новые функции по умолчанию недоступны через Data API: доступ выдаётся явно ниже.
+alter default privileges revoke execute on functions from public;
+alter default privileges in schema public revoke execute on functions from anon, authenticated;
+alter default privileges in schema private revoke execute on functions from anon, authenticated;
+
 -- Есть ли блокировка между двумя пользователями (в любую сторону).
--- security definer: видит блокировки независимо от RLS.
-create function public.is_blocked_between(a uuid, b uuid)
+-- security definer: видит блокировки независимо от RLS. Функция разрешает проверять
+-- только отношения, в которых участвует текущий пользователь, и не выставлена как RPC.
+create function private.is_blocked_between(a uuid, b uuid)
 returns boolean
 language sql stable security definer set search_path = ''
 as $$
-  select exists (
-    select 1 from public.blocks
-    where (blocker = a and blocked = b) or (blocker = b and blocked = a)
-  );
+  select
+    auth.uid() is not null
+    and (auth.uid() = a or auth.uid() = b)
+    and exists (
+      select 1 from public.blocks
+      where (blocker = a and blocked = b) or (blocker = b and blocked = a)
+    );
 $$;
 
 -- Лента: те, кого пользователь ещё не свайпал, без заблокированных.
@@ -114,7 +128,7 @@ $$;
 -- Если у вызывающего нет профиля, лента пустая.
 create function public.get_feed(p_limit int default 20)
 returns setof public.profiles
-language sql stable security definer set search_path = ''
+language sql stable security invoker set search_path = ''
 as $$
   with me as (
     select
@@ -139,7 +153,7 @@ as $$
       select 1 from public.swipes s
       where s.swiper = auth.uid() and s.target = p.id
     )
-    and not public.is_blocked_between(auth.uid(), p.id)
+    and not private.is_blocked_between(auth.uid(), p.id)
   order by random()
   limit least(p_limit, 50);
 $$;
@@ -295,7 +309,7 @@ alter table public.reports     enable row level security;
 
 -- profiles: читать можно всех, кроме заблокированных (в обе стороны); править только свой
 create policy "profiles_select" on public.profiles for select to authenticated
-  using (id = auth.uid() or not public.is_blocked_between(auth.uid(), id));
+  using (id = auth.uid() or not private.is_blocked_between(auth.uid(), id));
 create policy "profiles_insert" on public.profiles for insert to authenticated
   with check (id = auth.uid());
 create policy "profiles_update" on public.profiles for update to authenticated
@@ -305,7 +319,7 @@ create policy "profiles_update" on public.profiles for update to authenticated
 create policy "swipes_select" on public.swipes for select to authenticated
   using (swiper = auth.uid());
 create policy "swipes_insert" on public.swipes for insert to authenticated
-  with check (swiper = auth.uid() and not public.is_blocked_between(swiper, target));
+  with check (swiper = auth.uid() and not private.is_blocked_between(swiper, target));
 
 -- matches: только участникам; создаёт их только триггер, удаляет только block_user()
 create policy "matches_select" on public.matches for select to authenticated
@@ -317,7 +331,7 @@ create policy "messages_select" on public.messages for select to authenticated
     select 1 from public.matches m
     where m.id = match_id
       and auth.uid() in (m.user_a, m.user_b)
-      and not public.is_blocked_between(m.user_a, m.user_b)
+      and not private.is_blocked_between(m.user_a, m.user_b)
   ));
 create policy "messages_insert" on public.messages for insert to authenticated
   with check (
@@ -326,7 +340,7 @@ create policy "messages_insert" on public.messages for insert to authenticated
       select 1 from public.matches m
       where m.id = match_id
         and auth.uid() in (m.user_a, m.user_b)
-        and not public.is_blocked_between(m.user_a, m.user_b)
+        and not private.is_blocked_between(m.user_a, m.user_b)
     )
   );
 
@@ -402,14 +416,24 @@ revoke execute on function public.get_feed(int)                  from public, an
 revoke execute on function public.get_matches()                  from public, anon;
 revoke execute on function public.mark_match_read(uuid)          from public, anon;
 revoke execute on function public.block_user(uuid)               from public, anon;
-revoke execute on function public.is_blocked_between(uuid, uuid) from public, anon;
 revoke execute on function public.create_match()                 from public, anon, authenticated;
 revoke execute on function public.broadcast_match_deleted()      from public, anon, authenticated;
+revoke execute on function private.is_blocked_between(uuid, uuid) from public, anon;
 grant execute on function public.get_feed(int)                  to authenticated;
 grant execute on function public.get_matches()                  to authenticated;
 grant execute on function public.mark_match_read(uuid)          to authenticated;
 grant execute on function public.block_user(uuid)               to authenticated;
-grant execute on function public.is_blocked_between(uuid, uuid) to authenticated;
+grant execute on function private.is_blocked_between(uuid, uuid) to authenticated;
+
+-- Supabase создаёт event-trigger для автоматического включения RLS. Он работает
+-- от имени владельца и не должен быть доступен клиентским ролям как RPC.
+do $$
+begin
+  if to_regprocedure('public.rls_auto_enable()') is not null then
+    execute 'revoke execute on function public.rls_auto_enable() from public, anon, authenticated';
+  end if;
+end
+$$;
 
 -- =========================================================
 -- ЗАМЕТКИ
@@ -421,9 +445,13 @@ grant execute on function public.is_blocked_between(uuid, uuid) to authenticated
 --   auth.admin.deleteUser(uid); внешние ключи каскадно удаляют данные из public.
 -- * Перед релизом проверить RLS под разными пользователями: чужие свайпы, сообщения,
 --   матчи, match_reads, blocks и reports не должны быть доступны.
+-- * Внутренняя private.is_blocked_between() не выставляется через Data API и разрешает
+--   проверять только блокировки с участием текущего пользователя.
 -- * Блокировка необратима в MVP; block_user() удаляет матч вместе с перепиской.
 -- * Жалоба хранит категорию и комментарий. Для модерации истории переписки понадобится
 --   отдельный снимок сообщений до удаления матча.
 -- * Защиты от спама сообщениями пока нет (лимит частоты вставки): вопрос этапа 6.
+-- * В Supabase Auth перед production нужно выставить минимальную длину нового пароля 8;
+--   проверка утёкших паролей доступна на Pro-плане и включается в Auth Settings.
 -- * Для уже существующего проекта изменения настроек применяются через
 --   settings_migration.sql. Этот schema.sql всегда должен содержать итоговое состояние.

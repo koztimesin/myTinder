@@ -77,7 +77,8 @@ extension AuthViewModel: AuthViewModelProtocol {
     }
     
     var canSubmit: Bool {
-        email.contains("@") && password.count >= 6 && !isLoading
+        let minimumPasswordLength = mode == .signUp ? 8 : 6
+        return email.contains("@") && password.count >= minimumPasswordLength && !isLoading
     }
     
     func submit() async {
