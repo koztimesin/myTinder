@@ -39,16 +39,19 @@ final class OnboardingViewModel {
     /// - Parameters:
     ///   - profiles: репозиторий профилей.
     ///   - photoRepository: репозиторий фото.
+    ///   - initialPhotos: начальные локальные фото; пустой массив при обычном запуске.
     ///   - onCreated: вызывается, когда профиль создан (или уже существовал); обычно `ProfileStore.didCreate`.
     ///   - onSignOut: выход из аккаунта, чтобы пользователь не застрял на онбординге.
     init(
         profiles: ProfileRepositoryProtocol,
         photoRepository: PhotoRepositoryProtocol,
+        initialPhotos: [LocalPhoto] = [],
         onCreated: @escaping @MainActor (Profile) -> Void,
         onSignOut: @escaping @MainActor () -> Void
     ) {
         self.profiles = profiles
         self.photoRepository = photoRepository
+        self.photos = initialPhotos
         self.onCreated = onCreated
         self.onSignOut = onSignOut
     }
