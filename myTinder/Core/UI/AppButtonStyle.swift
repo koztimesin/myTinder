@@ -49,6 +49,8 @@ private struct AppButtonBody: View {
     
     /// Доступна ли кнопка для нажатия.
     @Environment(\.isEnabled) private var isEnabled
+    /// Отключает декоративное уменьшение кнопки, если пользователь уменьшил движение.
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     
     var body: some View {
         configuration.label
@@ -60,8 +62,8 @@ private struct AppButtonBody: View {
             .overlay(shape.stroke(borderColor, lineWidth: borderWidth))
             .contentShape(shape)
             .opacity(isEnabled ? (configuration.isPressed ? 0.85 : 1) : 0.45)
-            .scaleEffect(configuration.isPressed ? 0.98 : 1)
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.98 : 1)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
     }
     
     /// Форма кнопки.

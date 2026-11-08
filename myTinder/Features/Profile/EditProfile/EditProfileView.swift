@@ -13,11 +13,15 @@ struct EditProfileView<ViewModel: EditProfileViewModelProtocol>: View {
 
     @State private var viewModel: ViewModel
     @State private var pickerItems: [PhotosPickerItem] = []
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-    private let columns = Array(
-        repeating: GridItem(.flexible(), spacing: AppTheme.Spacing.s),
-        count: 3
-    )
+    /// При специальных размерах текста оставляет плиткам фото достаточно места.
+    private var columns: [GridItem] {
+        Array(
+            repeating: GridItem(.flexible(), spacing: AppTheme.Spacing.s),
+            count: dynamicTypeSize.isAccessibilitySize ? 2 : 3
+        )
+    }
 
     /// Создаёт экран с подготовленной моделью представления.
     /// - Parameter viewModel: модель представления профиля.

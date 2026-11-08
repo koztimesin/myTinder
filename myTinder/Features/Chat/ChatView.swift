@@ -12,6 +12,7 @@ struct ChatView<ViewModel: ChatViewModelProtocol>: View {
     @Bindable var viewModel: ViewModel
     
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Включается чуть позже появления списка, чтобы стартовая прокрутка вниз не запустила подгрузку истории.
     @State private var canLoadOlder = false
     
@@ -144,7 +145,9 @@ struct ChatView<ViewModel: ChatViewModelProtocol>: View {
             .onChange(of: viewModel.lastRowID) { _, id in
                 guard let id else { return }
                 
-                withAnimation { proxy.scrollTo(id, anchor: .bottom) }
+                withAnimation(reduceMotion ? nil : .default) {
+                    proxy.scrollTo(id, anchor: .bottom)
+                }
             }
             .task {
                 try? await Task.sleep(for: .milliseconds(400))

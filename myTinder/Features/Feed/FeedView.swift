@@ -31,6 +31,8 @@ struct FeedView<ViewModel: FeedViewModelProtocol>: View {
     @State private var dragAxis: DragAxis?
     /// Сворачивается ли анкета: на это время жесты и кнопки игнорируются.
     @State private var isCollapsing = false
+    /// Убирает декоративное движение, если пользователь включил системную настройку.
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     
     /// Смещение, после которого отпускание засчитывается как свайп.
     private let swipeThreshold: CGFloat = 110
@@ -184,10 +186,16 @@ struct FeedView<ViewModel: FeedViewModelProtocol>: View {
                 .padding(.top, AppTheme.Spacing.s)
                 .transition(.move(edge: .top).combined(with: .opacity))
                 .onTapGesture {
-                    viewModel.dismissSwipeError()
-                    viewModel.candidate?.dismissError()
+                    dismissError()
                 }
+                .accessibilityAction(named: Text("Закрыть сообщение")) { dismissError() }
         }
+    }
+
+    /// Закрывает любую временную ошибку ленты или открытой анкеты.
+    private func dismissError() {
+        viewModel.dismissSwipeError()
+        viewModel.candidate?.dismissError()
     }
     
     /// Цветная подсветка верхней карточки с иконкой в центре: зелёная с сердечком вправо,
@@ -410,7 +418,7 @@ struct FeedView<ViewModel: FeedViewModelProtocol>: View {
     
     /// Доводит раскрытие до конца пружиной.
     private func settleExpanded() {
-        withAnimation(expandAnimation) {
+        withAnimation(reduceMotion ? nil : expandAnimation) {
             expansion = 1
         }
     }
@@ -427,6 +435,14 @@ struct FeedView<ViewModel: FeedViewModelProtocol>: View {
         }
         
         isCollapsing = true
+        guard !reduceMotion else {
+            expansion = 0
+            isCollapsing = false
+            viewModel.closeCandidate()
+            action?()
+            return
+        }
+
         withAnimation(expandAnimation) {
             expansion = 0
         } completion: {
@@ -521,7 +537,7 @@ struct FeedView<ViewModel: FeedViewModelProtocol>: View {
         } else if abs(projected) > swipeThreshold * 2 {
             swipe(liked: projected > 0, width: width)
         } else {
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+            withAnimation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.7)) {
                 dragOffset = .zero
             }
         }
@@ -551,22 +567,33 @@ struct FeedView<ViewModel: FeedViewModelProtocol>: View {
         
         isFlying = true
         let direction: CGFloat = liked ? 1 : -1
+
+        guard !reduceMotion else {
+            completeSwipe(liked: liked)
+            return
+        }
         
         withAnimation(.easeIn(duration: 0.22)) {
             dragOffset = CGSize(width: direction * width * 1.4, height: dragOffset.height)
         } completion: {
-            var transaction = Transaction()
-            transaction.disablesAnimations = true
-            
-            withTransaction(transaction) {
-                if liked {
-                    viewModel.like()
-                } else {
-                    viewModel.dislike()
-                }
-                dragOffset = .zero
-                isFlying = false
+            completeSwipe(liked: liked)
+        }
+    }
+
+    /// Применяет решение по карточке и без анимации возвращает состояние свайпа в исходное.
+    /// - Parameter liked: `true` — лайк, `false` — дизлайк.
+    private func completeSwipe(liked: Bool) {
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+
+        withTransaction(transaction) {
+            if liked {
+                viewModel.like()
+            } else {
+                viewModel.dislike()
             }
+            dragOffset = .zero
+            isFlying = false
         }
     }
 }
