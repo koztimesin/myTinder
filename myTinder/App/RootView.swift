@@ -18,7 +18,9 @@ struct RootView: View {
         Group {
             switch session.state {
             case .loading:
-                ProgressView()
+                LoadingIndicatorView(
+                    viewModel: LoadingIndicatorViewModel(title: "Проверяем сессию")
+                )
 
             case .signedOut:
                 AuthView(viewModel: AuthViewModel(auth: container.authRepository))
@@ -28,6 +30,8 @@ struct RootView: View {
                     .id(user.id)
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(AppTheme.Colors.background)
         .preferredColorScheme(appearance.colorScheme)
     }
 
