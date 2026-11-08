@@ -19,15 +19,27 @@ struct FeedActionButtonStyle: ButtonStyle {
     /// Собирает внешний вид кнопки.
     /// - Parameter configuration: состояние кнопки и её содержимое (иконка).
     /// - Returns: круглая кнопка нужного вида.
-    @ViewBuilder
     func makeBody(configuration: Configuration) -> some View {
+        FeedActionButtonBody(kind: kind, configuration: configuration)
+    }
+}
+
+private struct FeedActionButtonBody: View {
+
+    let kind: FeedActionButtonStyle.Kind
+    let configuration: ButtonStyleConfiguration
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    @ViewBuilder
+    var body: some View {
         let content = configuration.label
             .font(.system(size: iconSize, weight: .heavy, design: .rounded))
             .foregroundStyle(kind == .like ? AppTheme.Colors.onAccent : Color.white)
             .frame(width: diameter, height: diameter)
             .contentShape(Circle())
-            .scaleEffect(configuration.isPressed ? 0.92 : 1)
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.92 : 1)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
         
         switch kind {
         case .like:
