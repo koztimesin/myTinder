@@ -52,7 +52,8 @@ final class MatchesStore {
         }
     }
 
-    /// Слушает потоки новых матчей и новых сообщений и перезагружает список на каждый сигнал.
+    /// Слушает создание и удаление матчей, а также новые сообщения,
+    /// и перезагружает список на каждый сигнал.
     /// Возвращается, когда оборвалась любая из подписок или задача отменена.
     private func listen() async {
         let (signals, continuation) = AsyncStream.makeStream(of: Void.self)
@@ -69,6 +70,12 @@ final class MatchesStore {
             }
             continuation.finish()
         }
+        let deletionsTask = Task {
+            for await _ in self.repository.deletedMatchSignals() {
+                continuation.yield()
+            }
+            continuation.finish()
+        }
 
         await withTaskCancellationHandler {
             for await _ in signals {
@@ -77,11 +84,13 @@ final class MatchesStore {
         } onCancel: {
             matchesTask.cancel()
             messagesTask.cancel()
+            deletionsTask.cancel()
             continuation.finish()
         }
 
         matchesTask.cancel()
         messagesTask.cancel()
+        deletionsTask.cancel()
     }
     
     /// Перезагружает список. Вызовы во время загрузки не дублируют запрос,

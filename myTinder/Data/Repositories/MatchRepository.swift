@@ -18,6 +18,11 @@ protocol MatchRepositoryProtocol: Sendable {
     /// - Returns: поток идентификаторов новых матчей. Завершается при ошибке подключения
     ///   или когда потребитель перестаёт его читать (подписка при этом закрывается).
     func newMatchSignals() -> AsyncStream<UUID>
+
+    /// Открывает приватную подписку на удаление матчей текущего пользователя.
+    /// - Returns: поток идентификаторов удалённых матчей. Завершается при ошибке подключения
+    ///   или когда потребитель перестаёт его читать.
+    func deletedMatchSignals() -> AsyncStream<UUID>
     
     /// Открывает подписку на новые сообщения во всех диалогах текущего пользователя.
     /// - Returns: поток сигналов; завершается при ошибке подключения или когда потребитель перестаёт его читать.
@@ -27,6 +32,16 @@ protocol MatchRepositoryProtocol: Sendable {
 struct SupabaseMatchRepository {
     
     let client: SupabaseClient
+}
+
+/// Полезная нагрузка приватного события об удалении матча.
+private struct MatchDeletedBroadcast: Decodable {
+    /// Идентификатор удалённого матча.
+    let matchID: UUID
+
+    enum CodingKeys: String, CodingKey {
+        case matchID = "match_id"
+    }
 }
 
 extension SupabaseMatchRepository: MatchRepositoryProtocol {
@@ -87,6 +102,42 @@ extension SupabaseMatchRepository: MatchRepositoryProtocol {
                 }
                 continuation.finish()
             }
+            continuation.onTermination = { _ in
+                task.cancel()
+            }
+        }
+    }
+
+    func deletedMatchSignals() -> AsyncStream<UUID> {
+        AsyncStream { continuation in
+            let task = Task {
+                do {
+                    let userID = try await client.auth.session.user.id.uuidString.lowercased()
+                    let channel = client.realtimeV2.channel("user:\(userID)") {
+                        $0.isPrivate = true
+                    }
+                    let deletions = channel.broadcastStream(event: "match_deleted")
+
+                    try await channel.subscribeWithError()
+
+                    for await message in deletions {
+                        guard
+                            let payload = message["payload"],
+                            let event = try? payload.decode(as: MatchDeletedBroadcast.self)
+                        else { continue }
+
+                        continuation.yield(event.matchID)
+                    }
+
+                    await client.realtimeV2.removeChannel(channel)
+                } catch {
+                    // Ошибка авторизации или подключения завершает поток;
+                    // `MatchesStore.run()` повторит подключение.
+                }
+
+                continuation.finish()
+            }
+
             continuation.onTermination = { _ in
                 task.cancel()
             }

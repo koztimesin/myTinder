@@ -2,6 +2,8 @@
 #
 # gitignore contributors: remember to update Global/Xcode.gitignore, Objective-C.gitignore & Swift.gitignore
 
+.DS_Store
+
 ## User settings
 xcuserdata/
 
@@ -68,7 +70,3 @@ AGENTS.md
 /supabase/.temp/
 /supabase/.env
 /supabase/functions/.env
-supabase
-schema.sql
-settings_migration.sql
-supabase/
