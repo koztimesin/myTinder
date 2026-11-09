@@ -52,6 +52,12 @@ struct ProfileValidationTests {
         #expect(InterestOption(genders: [.female, .male]) == .everyone)
         #expect(InterestOption(genders: []) == nil)
     }
+
+    @Test
+    func photoLimitMatchesProfileContract() {
+        #expect(ProfileValidation.maxPhotos == 4)
+        #expect(ProfileError.photoLimit.errorDescription == "Можно загрузить не больше 4 фото.")
+    }
 }
 
 @Suite("Profile store")
@@ -86,6 +92,21 @@ struct ProfileStoreTests {
 @Suite("Onboarding")
 @MainActor
 struct OnboardingViewModelTests {
+    @Test
+    func limitsRestoredPhotosToFour() {
+        let photos = (0..<5).map { _ in TestFixtures.localPhoto() }
+        let viewModel = OnboardingViewModel(
+            profiles: ProfileRepositoryStub(),
+            photoRepository: PhotoRepositoryStub(),
+            initialPhotos: photos,
+            onCreated: { _ in },
+            onSignOut: {}
+        )
+
+        #expect(viewModel.tiles.count == 4)
+        #expect(viewModel.remainingSlots == 0)
+    }
+
     @Test
     func createsNormalizedProfileWithDefaultFilters() async {
         let created = TestFixtures.profile(photoPaths: ["new.jpg"])
@@ -184,6 +205,20 @@ struct OnboardingViewModelTests {
 @MainActor
 struct EditProfileViewModelTests {
     @Test
+    func disablesPhotoAdditionsAtFourPhotos() {
+        let viewModel = EditProfileViewModel(
+            profile: TestFixtures.profile(photoPaths: ["1.jpg", "2.jpg", "3.jpg", "4.jpg"]),
+            profiles: ProfileRepositoryStub(),
+            photoRepository: PhotoRepositoryStub(),
+            urlProvider: PhotoURLProviderStub(),
+            onUpdated: { _ in }
+        )
+
+        #expect(viewModel.tiles.count == 4)
+        #expect(viewModel.remainingSlots == 0)
+    }
+
+    @Test
     func savesBioWithoutChangingDiscoveryPreferences() async {
         var updated = TestFixtures.profile()
         updated.bio = "Новое описание"
@@ -209,5 +244,83 @@ struct EditProfileViewModelTests {
         #expect(changes?.maxAge == 30)
         #expect(received == updated)
         #expect(!viewModel.canSave)
+    }
+}
+
+@Suite("Discovery filters")
+@MainActor
+struct DiscoveryFilterViewModelTests {
+    @Test
+    func appliesOnlyDiscoveryPreferencesAndPreservesProfileContent() async {
+        let original = TestFixtures.profile(photoPaths: ["main.jpg", "second.jpg"])
+        var updated = original
+        updated.interestedIn = [.male, .female]
+        updated.minAge = 24
+        updated.maxAge = 36
+        let profiles = ProfileRepositoryStub()
+        profiles.updateResult = .success(updated)
+        var received: Profile?
+        let viewModel = DiscoveryFilterViewModel(
+            profile: original,
+            profiles: profiles,
+            onApplied: { received = $0 }
+        )
+        viewModel.interest = .everyone
+        viewModel.minAge = 24
+        viewModel.maxAge = 36
+
+        #expect(viewModel.canApply)
+        await viewModel.apply()
+
+        let changes = profiles.updates.first
+        #expect(changes?.bio == original.bio)
+        #expect(changes?.photoPaths == original.photoPaths)
+        #expect(Set(changes?.interestedIn ?? []) == Set([.male, .female]))
+        #expect(changes?.minAge == 24)
+        #expect(changes?.maxAge == 36)
+        #expect(received == updated)
+        #expect(!viewModel.canApply)
+        #expect(viewModel.errorMessage == nil)
+    }
+
+    @Test
+    func keepsDraftAndAllowsRetryAfterFailure() async {
+        let profiles = ProfileRepositoryStub()
+        profiles.updateResult = .failure(TestFailure.expected)
+        var appliedCount = 0
+        let viewModel = DiscoveryFilterViewModel(
+            profile: TestFixtures.profile(),
+            profiles: profiles,
+            onApplied: { _ in appliedCount += 1 }
+        )
+        viewModel.minAge = 23
+        viewModel.maxAge = 34
+
+        await viewModel.apply()
+
+        #expect(viewModel.minAge == 23)
+        #expect(viewModel.maxAge == 34)
+        #expect(viewModel.errorMessage != nil)
+        #expect(viewModel.canApply)
+        #expect(appliedCount == 0)
+    }
+
+    @Test
+    func ignoresUnchangedAndInvalidValues() async {
+        let profiles = ProfileRepositoryStub()
+        let viewModel = DiscoveryFilterViewModel(
+            profile: TestFixtures.profile(),
+            profiles: profiles,
+            onApplied: { _ in }
+        )
+
+        #expect(!viewModel.canApply)
+        await viewModel.apply()
+        viewModel.minAge = 40
+        viewModel.maxAge = 30
+        #expect(!viewModel.canApply)
+        await viewModel.apply()
+
+        #expect(profiles.updates.isEmpty)
     }
 }

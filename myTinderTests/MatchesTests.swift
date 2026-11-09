@@ -98,3 +98,95 @@ struct MatchesViewModelTests {
         #expect(viewModel.dialogRows.first?.unreadCount == 2)
     }
 }
+
+@Suite("Match celebration")
+@MainActor
+struct MatchCelebrationViewModelTests {
+    @Test
+    func ignoresEmptyMessage() async {
+        let repository = ChatRepositoryStub(fetchResults: [])
+        let viewModel = makeViewModel(repository: repository)
+        viewModel.draft = "  \n "
+
+        #expect(!viewModel.canSend)
+        await viewModel.send()
+
+        #expect(repository.sendCalls.isEmpty)
+    }
+
+    @Test
+    func limitsDraftToTwoThousandCharacters() {
+        let viewModel = makeViewModel(repository: ChatRepositoryStub(fetchResults: []))
+
+        viewModel.draft = String(repeating: "а", count: 2_001)
+
+        #expect(viewModel.draft.count == 2_000)
+    }
+
+    @Test
+    func successfulMessageIsTrimmedAndOpensChat() async {
+        let repository = ChatRepositoryStub(fetchResults: [])
+        repository.sendResults = [.success(())]
+        var openedCount = 0
+        let viewModel = makeViewModel(repository: repository) { openedCount += 1 }
+        viewModel.draft = "  Привет! \n"
+
+        await viewModel.send()
+
+        #expect(repository.sendCalls.count == 1)
+        #expect(repository.sendCalls.first?.1 == "Привет!")
+        #expect(openedCount == 1)
+        #expect(viewModel.draft.isEmpty)
+        #expect(viewModel.errorMessage == nil)
+    }
+
+    @Test
+    func failureKeepsDraftAndRetryReusesMessageID() async throws {
+        let repository = ChatRepositoryStub(fetchResults: [])
+        repository.sendResults = [.failure(TestFailure.expected), .success(())]
+        var openedCount = 0
+        let viewModel = makeViewModel(repository: repository) { openedCount += 1 }
+        viewModel.draft = "Привет!"
+
+        await viewModel.send()
+        let firstID = try #require(repository.sendCalls.first?.0)
+        #expect(viewModel.draft == "Привет!")
+        #expect(viewModel.errorMessage != nil)
+        #expect(openedCount == 0)
+
+        await viewModel.send()
+
+        #expect(repository.sendCalls.count == 2)
+        #expect(repository.sendCalls.last?.0 == firstID)
+        #expect(openedCount == 1)
+        #expect(viewModel.draft.isEmpty)
+    }
+
+    @Test
+    func closeInvokesDismissAction() {
+        var dismissCount = 0
+        let viewModel = makeViewModel(
+            repository: ChatRepositoryStub(fetchResults: []),
+            onDismiss: { dismissCount += 1 }
+        )
+
+        viewModel.dismiss()
+
+        #expect(dismissCount == 1)
+    }
+
+    private func makeViewModel(
+        repository: ChatRepositoryStub,
+        onSent: @escaping @MainActor () -> Void = {},
+        onDismiss: @escaping @MainActor () -> Void = {}
+    ) -> MatchCelebrationViewModel {
+        MatchCelebrationViewModel(
+            match: TestFixtures.match(),
+            myPhotoPath: "mine.jpg",
+            photoURLProvider: PhotoURLProviderStub(),
+            chatRepository: repository,
+            onSent: onSent,
+            onDismiss: onDismiss
+        )
+    }
+}
