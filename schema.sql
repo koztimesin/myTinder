@@ -27,7 +27,7 @@ alter table public.profiles
   add constraint profiles_interested_in_check
     check (interested_in <@ array['male','female']::text[]),
   add constraint profiles_photo_paths_limit
-    check (cardinality(photo_paths) <= 6),
+    check (cardinality(photo_paths) <= 4),
   add constraint profiles_age_range_check
     check (18 <= min_age and min_age <= max_age and max_age <= 99);
 

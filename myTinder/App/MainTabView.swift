@@ -14,7 +14,9 @@ enum MainTab: Hashable {
 
 /// Маршруты внутри вкладки профиля.
 enum ProfileRoute: Hashable {
-    /// Настройки выдачи ленты.
+    /// Редактирование данных и фотографий профиля.
+    case editProfile
+    /// Общие настройки аккаунта.
     case settings
     /// Подготовка к удалению аккаунта.
     case deleteAccount
@@ -50,9 +52,25 @@ final class MainTabRouter {
         profilePath.append(.settings)
     }
 
+    /// Открывает редактор профиля.
+    func openEditProfile() {
+        profilePath.append(.editProfile)
+    }
+
     /// Открывает экран удаления аккаунта.
     func openDeleteAccount() {
         profilePath.append(.deleteAccount)
+    }
+}
+
+/// Единый актуальный профиль для экранов внутри главного хоста.
+@MainActor
+@Observable
+private final class CurrentProfileState {
+    var profile: Profile
+
+    init(profile: Profile) {
+        self.profile = profile
     }
 }
 
@@ -60,8 +78,6 @@ struct MainTabView: View {
     
     /// Контейнер зависимостей.
     private let container: AppContainer
-    /// Профиль текущего пользователя.
-    private let profile: Profile
     /// Вызывается, когда профиль обновлён на экране «Профиль».
     private let onProfileUpdated: @MainActor (Profile) -> Void
     /// Вызывается при выходе из аккаунта.
@@ -77,6 +93,10 @@ struct MainTabView: View {
     @State private var matchesViewModel: MatchesViewModel
     /// Модель профиля живёт вместе с хостом и принимает изменения из настроек.
     @State private var editProfileViewModel: EditProfileViewModel
+    /// Актуальная версия профиля после редактирования или применения фильтров.
+    @State private var currentProfile: CurrentProfileState
+    /// Показывается ли модальная шторка фильтров.
+    @State private var isFilterPresented = false
     
     @Environment(\.scenePhase) private var scenePhase
     
@@ -92,9 +112,11 @@ struct MainTabView: View {
         onSignOut: @escaping @MainActor () -> Void
     ) {
         self.container = container
-        self.profile = profile
         self.onProfileUpdated = onProfileUpdated
         self.onSignOut = onSignOut
+
+        let currentProfile = CurrentProfileState(profile: profile)
+        _currentProfile = State(initialValue: currentProfile)
 
         let feedViewModel = container.makeFeedViewModel()
         _feedViewModel = State(initialValue: feedViewModel)
@@ -110,10 +132,10 @@ struct MainTabView: View {
         ))
         _editProfileViewModel = State(initialValue: container.makeEditProfileViewModel(
             profile: profile,
-            onUpdated: onProfileUpdated,
-            onDiscoveryUpdated: { Task { await feedViewModel.reload() } },
-            onOpenSettings: { router.openSettings() },
-            onSignOut: onSignOut
+            onUpdated: { updated in
+                currentProfile.profile = updated
+                onProfileUpdated(updated)
+            }
         ))
     }
     
@@ -121,7 +143,12 @@ struct MainTabView: View {
         TabView(selection: $router.selectedTab) {
             
             Tab("Лента", systemImage: "rectangle.stack", value: MainTab.feed) {
-                FeedView(viewModel: feedViewModel)
+                FeedView(
+                    viewModel: feedViewModel,
+                    profilePhotoURL: editProfileViewModel.mainPhotoURL,
+                    onOpenFilters: { isFilterPresented = true },
+                    onOpenProfile: { router.selectedTab = .profile }
+                )
             }
             
             Tab("Матчи", systemImage: "heart", value: MainTab.matches) {
@@ -136,7 +163,12 @@ struct MainTabView: View {
             
             Tab("Профиль", systemImage: "person.crop.circle", value: MainTab.profile) {
                 NavigationStack(path: $router.profilePath) {
-                    EditProfileView(viewModel: editProfileViewModel)
+                    ProfileOverviewView(
+                        viewModel: editProfileViewModel,
+                        onEdit: router.openEditProfile,
+                        onOpenSettings: router.openSettings,
+                        onSignOut: onSignOut
+                    )
                         .navigationDestination(for: ProfileRoute.self) { route in
                             profileDestination(for: route)
                         }
@@ -159,6 +191,15 @@ struct MainTabView: View {
                 .id(match.id)
                 .interactiveDismissDisabled()
         }
+        .sheet(isPresented: $isFilterPresented) {
+            DiscoveryFilterView(
+                viewModel: makeDiscoveryFilterViewModel(),
+                onClose: { isFilterPresented = false }
+            )
+            .presentationDetents([.large])
+            .presentationDragIndicator(.hidden)
+            .presentationCornerRadius(AppTheme.Radius.card)
+        }
     }
     
     // MARK: - Окно «Это матч»
@@ -168,10 +209,26 @@ struct MainTabView: View {
     @ViewBuilder
     private func profileDestination(for route: ProfileRoute) -> some View {
         switch route {
+        case .editProfile:
+            EditProfileView(viewModel: editProfileViewModel)
         case .settings:
             SettingsPresenter { makeSettingsViewModel() }
         case .deleteAccount:
             DeleteAccountPresenter { container.makeDeleteAccountViewModel() }
+        }
+    }
+
+    /// Собирает фильтры из самой свежей версии профиля.
+    private func makeDiscoveryFilterViewModel() -> DiscoveryFilterViewModel {
+        container.makeDiscoveryFilterViewModel(profile: currentProfile.profile) { updated in
+            currentProfile.profile = updated
+            onProfileUpdated(updated)
+            isFilterPresented = false
+
+            Task {
+                await editProfileViewModel.sync(profile: updated)
+                await feedViewModel.reload()
+            }
         }
     }
 
@@ -202,7 +259,7 @@ struct MainTabView: View {
         
         return container.makeMatchCelebrationViewModel(
             match: match,
-            myPhotoPath: profile.photoPaths.first,
+            myPhotoPath: currentProfile.profile.photoPaths.first,
             onWrite: {
                 router.openChat(match.id)
                 store.dismissCelebration(id: match.id)
@@ -230,7 +287,7 @@ struct MainTabView: View {
         return container.makeChatViewModel(
             matchID: match.id,
             partner: match.partner,
-            currentUserID: profile.id,
+            currentUserID: currentProfile.profile.id,
             onRead: { Task { await store.reload() } },
             onBlocked: {
                 router.matchesPath = []

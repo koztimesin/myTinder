@@ -6,55 +6,91 @@
 //
 
 import Foundation
+import Supabase
 
-enum ProfileError: LocalizedError {
+/// Коды ошибок PostgreSQL, которые приходят от Supabase в `PostgrestError.code`
+enum PostgresErrorCode {
     
-    case invalidData
-    case underage
-    case alreadyExists
-    case photoLimit
+    /// Нарушена уникальность (например, профиль с таким `id` уже существует)
+    static let uniqueViolation = "23505"
     
-    var errorDescription: String? {
-        switch self {
-        case .invalidData: "Не удалось прочитать данные профиля."
-        case .underage: "Регистрация доступна только с 18 лет."
-        case .alreadyExists: "Профиль уже создан."
-        case .photoLimit: "Можно загрузить не больше 6 фото."
+    /// Не прошёл проверку (например, возраст меньше 18)
+    static let checkViolation = "23514"
+}
+
+struct ProfileRepository {
+    
+    let client: SupabaseClient
+    
+    private func currentUserID() async throws -> UUID {
+        try await client.auth.session.user.id
+    }
+    
+    private static func map(_ error: PostgrestError) -> Error {
+        
+        switch error.code {
+            
+        case PostgresErrorCode.uniqueViolation: ProfileError.alreadyExists
+            
+        case PostgresErrorCode.checkViolation: error.message.contains("birth_date") ? ProfileError.underage : error
+            
+        default: error
         }
     }
 }
 
-struct NewProfile: Sendable {
+extension ProfileRepository: ProfileRepositoryProtocol {
     
-    let name: String
-    let birthDate: Date
-    let bio: String?
-    let gender: Gender
-    let interestedIn: [Gender]
-    let photoPaths: [String]
-    var minAge = ProfileValidation.minimumDiscoveryAge
-    var maxAge = ProfileValidation.maximumDiscoveryAge
-}
-
-struct ProfileChanges: Sendable {
+    func fetchMyProfile() async throws -> Profile? {
+        let uid = try await currentUserID()
+        let rows: [ProfileDTO] = try await client
+            .from("profiles").select()
+            .eq("id", value: uid)
+            .limit(1)
+            .execute().value
+        return try rows.first?.toDomain()
+    }
     
-    var bio: String?
-    var interestedIn: [Gender]
-    var photoPaths: [String]
-    var minAge: Int
-    var maxAge: Int
-}
-
-protocol ProfileRepositoryProtocol: Sendable {
+    func create(_ new: NewProfile) async throws -> Profile {
+        let uid = try await currentUserID()
+        
+        let dto = ProfileInsertDTO(
+            id: uid,
+            name: new.name,
+            birthDate: DateOnly.formatter.string(from: new.birthDate),
+            bio: new.bio,
+            gender: new.gender.rawValue,
+            interestedIn: new.interestedIn.map(\.rawValue),
+            photoPaths: new.photoPaths,
+            minAge: new.minAge,
+            maxAge: new.maxAge
+        )
+        
+        do {
+            let row: ProfileDTO = try await client
+                .from("profiles").insert(dto).select().single().execute().value
+            
+            return try row.toDomain()
+        } catch let error as PostgrestError {
+            throw Self.map(error)
+        }
+    }
     
-    func fetchMyProfile() async throws -> Profile?
-    func create(_ new: NewProfile) async throws -> Profile
-    func update(_ changes: ProfileChanges) async throws -> Profile
-}
-
-protocol PhotoRepositoryProtocol: Sendable {
-    
-    func upload(_ jpegData: Data) async throws -> String
-    func delete(path: String) async throws
-    func signedURLs(for paths: [String], expiresIn: Int) async throws -> [String: URL]
+    func update(_ changes: ProfileChanges) async throws -> Profile {
+        let uid = try await currentUserID()
+        
+        let dto = ProfileUpdateDTO(
+            bio: changes.bio,
+            interestedIn: changes.interestedIn.map(\.rawValue),
+            photoPaths: changes.photoPaths,
+            minAge: changes.minAge,
+            maxAge: changes.maxAge
+        )
+        
+        let row: ProfileDTO = try await client
+            .from("profiles").update(dto).eq("id", value: uid)
+            .select().single().execute().value
+        
+        return try row.toDomain()
+    }
 }

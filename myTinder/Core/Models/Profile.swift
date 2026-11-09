@@ -34,7 +34,7 @@ enum ProfileValidation {
         case bioTooLong
     }
     
-    static let maxPhotos = 6
+    static let maxPhotos = 4
     /// Нижняя граница возрастного фильтра.
     static let minimumDiscoveryAge = 18
     /// Верхняя граница возрастного фильтра.

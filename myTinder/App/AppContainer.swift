@@ -11,21 +11,29 @@ import Foundation
 @MainActor
 final class AppContainer {
     
-    private let supabase = SupabaseClient(supabaseURL: AppConfig.supabaseURL, supabaseKey: AppConfig.supabaseKey)
+    private let client = SupabaseClient(supabaseURL: AppConfig.supabaseURL, supabaseKey: AppConfig.supabaseKey)
     
     let authRepository: AuthRepositoryProtocol
-    lazy var profileRepository: ProfileRepositoryProtocol = SupabaseProfileRepository(client: supabase)
-    lazy var photoRepository: PhotoRepositoryProtocol = SupabasePhotoRepository(client: supabase)
-    lazy var photoURLProvider: PhotoURLProviderProtocol = PhotoURLCache(repository: photoRepository)
-    lazy var feedRepository = SupabaseFeedRepository(client: supabase)
-    lazy var matchRepository: MatchRepositoryProtocol = SupabaseMatchRepository(client: supabase)
-    lazy var chatRepository: ChatRepositoryProtocol = SupabaseChatRepository(client: supabase)
-    lazy var moderationRepository: ModerationRepositoryProtocol = SupabaseModerationRepository(client: supabase)
-    lazy var accountRepository: AccountRepositoryProtocol = SupabaseAccountRepository(client: supabase)
-
+    let profileRepository: ProfileRepositoryProtocol
+    private let photoRepository: PhotoRepositoryProtocol
+    private let photoURLProvider: PhotoURLProviderProtocol
+    private let feedRepository: FeedRepositoryProtocol
+    private let matchRepository: MatchRepositoryProtocol
+    private let chatRepository: ChatRepositoryProtocol
+    private let moderationRepository: ModerationRepositoryProtocol
+    private let accountRepository: AccountRepositoryProtocol
+    
     
     init() {
-        authRepository = AuthRepository(client: supabase)
+        authRepository = AuthRepository(client: client)
+        profileRepository = ProfileRepository(client: client)
+        photoRepository = PhotoRepository(client: client)
+        photoURLProvider = PhotoURLCache(repository: photoRepository)
+        feedRepository = FeedRepository(client: client)
+        matchRepository = MatchRepository(client: client)
+        chatRepository = ChatRepository(client: client)
+        moderationRepository = ModerationRepository(client: client)
+        accountRepository = AccountRepository(client: client)
     }
     
     @MainActor
@@ -45,38 +53,39 @@ final class AppContainer {
     /// - Parameters:
     ///   - profile: текущий профиль.
     ///   - onUpdated: что делать после успешного изменения профиля.
-    ///   - onDiscoveryUpdated: обновить ленту после изменения фильтров.
-    ///   - onOpenSettings: открыть настройки выдачи.
-    ///   - onSignOut: что делать при выходе.
     @MainActor
     func makeEditProfileViewModel(
         profile: Profile,
-        onUpdated: @escaping @MainActor (Profile) -> Void,
-        onDiscoveryUpdated: @escaping @MainActor () -> Void,
-        onOpenSettings: @escaping @MainActor () -> Void,
-        onSignOut: @escaping @MainActor () -> Void
+        onUpdated: @escaping @MainActor (Profile) -> Void
     ) -> EditProfileViewModel {
         EditProfileViewModel(
             profile: profile,
             profiles: profileRepository,
             photoRepository: photoRepository,
             urlProvider: photoURLProvider,
-            onUpdated: onUpdated,
-            onDiscoveryUpdated: onDiscoveryUpdated,
-            onOpenSettings: onOpenSettings,
-            onSignOut: onSignOut
+            onUpdated: onUpdated
         )
     }
-
+    
+    /// Собирает отдельную модель фильтров выдачи.
+    func makeDiscoveryFilterViewModel(
+        profile: Profile,
+        onApplied: @escaping @MainActor (Profile) -> Void
+    ) -> DiscoveryFilterViewModel {
+        DiscoveryFilterViewModel(
+            profile: profile,
+            profiles: profileRepository,
+            onApplied: onApplied
+        )
+    }
+    
     /// Собирает модель общих настроек приложения.
     /// - Parameter onOpenDeleteAccount: открывает экран удаления аккаунта.
     /// - Returns: модель экрана настроек.
-    func makeSettingsViewModel(
-        onOpenDeleteAccount: @escaping @MainActor () -> Void
-    ) -> SettingsViewModel {
+    func makeSettingsViewModel(onOpenDeleteAccount: @escaping @MainActor () -> Void) -> SettingsViewModel {
         SettingsViewModel(onOpenDeleteAccount: onOpenDeleteAccount)
     }
-
+    
     /// Собирает модель окончательного удаления аккаунта.
     func makeDeleteAccountViewModel() -> DeleteAccountViewModel {
         DeleteAccountViewModel(repository: accountRepository)
@@ -84,15 +93,15 @@ final class AppContainer {
     
     /// Собирает модель экрана ленты.
     func makeFeedViewModel() -> FeedViewModel {
-        
         let useCase = FeedUseCase(repository: feedRepository)
+        
         return FeedViewModel(
             useCase: useCase,
             photoURLProvider: photoURLProvider,
             moderation: moderationRepository,
             makeReportViewModel: { userID, name, onFinished in
-                        self.makeReportViewModel(partnerID: userID, partnerName: name, onFinished: onFinished)
-                    }
+                self.makeReportViewModel(partnerID: userID, partnerName: name, onFinished: onFinished)
+            }
         )
     }
     

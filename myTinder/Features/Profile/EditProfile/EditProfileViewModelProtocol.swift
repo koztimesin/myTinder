@@ -17,12 +17,10 @@ protocol EditProfileViewModelProtocol: Observable, AnyObject {
     var name: String { get }
     var bio: String { get set }
     var genderTitle: String { get }
-    /// Выбранный вариант пола кандидатов.
-    var interest: InterestOption? { get set }
-    /// Нижняя граница возраста кандидатов.
-    var minAge: Double { get set }
-    /// Верхняя граница возраста кандидатов.
-    var maxAge: Double { get set }
+    /// Возраст пользователя.
+    var age: Int { get }
+    /// Ссылка на главное фото после загрузки временных URL.
+    var mainPhotoURL: URL? { get }
     /// Дата рождения для показа (менять нельзя).
     var birthDateText: String { get }
     /// Плитки фото профиля в сохранённом порядке, первая главная.
@@ -44,8 +42,4 @@ protocol EditProfileViewModelProtocol: Observable, AnyObject {
     func addPhotos(from items: [PhotosPickerItem]) async
     /// Сохраняет изменения полей формы.
     func save() async
-    /// Открывает настройки выдачи ленты.
-    func openSettings()
-    /// Выходит из аккаунта.
-    func signOut()
 }

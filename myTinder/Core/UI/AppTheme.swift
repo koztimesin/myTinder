@@ -11,43 +11,49 @@ import UIKit
 enum AppTheme {
     
     enum Colors {
-        /// Акцент: кнопка «Нравится», основная кнопка, индикаторы.
-        static let accent = Color(light: 0xD9304A, dark: 0xFF6B76)
-        /// Цвет контента на акцентном фоне. В тёмной теме тёмный: белый на коралловом не проходит контраст.
-        static let onAccent = Color(light: 0xFFFFFF, dark: 0x2B0B12)
-        /// Акцентный цвет для текста и иконок на светлом или тёмном фоне (активная вкладка).
-        static let accentText = Color(light: 0xB11F37, dark: 0xFF8A93)
+        /// Лаймовый основной акцент: главные кнопки и выбранные элементы.
+        static let accent = Color(light: 0xCAFF72, dark: 0xCAFF72)
+        /// Контент на лаймовом фоне.
+        static let onAccent = Color(light: 0x20104D, dark: 0x20104D)
+        /// Акцентный цвет текста и иконок.
+        static let accentText = Color(light: 0xCAFF72, dark: 0xCAFF72)
         /// Полупрозрачная подложка активной вкладки.
-        static let accentTint = Color(light: 0xD9304A, dark: 0xFF6B76).opacity(0.15)
+        static let accentTint = Color(light: 0xCAFF72, dark: 0xCAFF72).opacity(0.18)
         
         /// Фон экранов.
-        static let background = Color(light: 0xFFF8F5, dark: 0x14101A)
+        static let background = Color(light: 0x241052, dark: 0x241052)
         /// Фон карточек, плиток и полей ввода.
-        static let surface = Color(light: 0xFFFFFF, dark: 0x1F1A28)
+        static let surface = Color(light: 0x3A2077, dark: 0x3A2077)
         /// Фон полей только для чтения и неактивных элементов.
-        static let surfaceMuted = Color(light: 0xF3EBE8, dark: 0x2A2336)
+        static let surfaceMuted = Color(light: 0x4B2B91, dark: 0x4B2B91)
         
         /// Основной текст.
-        static let textPrimary = Color(light: 0x211B1E, dark: 0xF5F0FA)
+        static let textPrimary = Color(light: 0xFFF9FF, dark: 0xFFF9FF)
         /// Вторичный текст: подписи, подсказки.
-        static let textSecondary = Color(light: 0x6E6469, dark: 0xB6ABC4)
+        static let textSecondary = Color(light: 0xCCB9EC, dark: 0xCCB9EC)
         
         /// Разделители и рамки карточек.
-        static let separator = Color(light: 0xEADFE0, dark: 0x3A3248)
+        static let separator = Color(light: 0x6848A6, dark: 0x6848A6)
         /// Рамки полей ввода и вторичных кнопок.
-        static let border = Color(light: 0xCDBFC2, dark: 0x4A4058)
+        static let border = Color(light: 0x8D6BCC, dark: 0x8D6BCC)
         
         /// Ошибки и опасные действия (текст, рамки, кнопка удаления).
-        static let danger = Color(light: 0xB42323, dark: 0xFF6B6B)
+        static let danger = Color(light: 0xFF4D73, dark: 0xFF4D73)
         /// Цвет контента на фоне `danger`.
-        static let onDanger = Color(light: 0xFFFFFF, dark: 0x2B0B12)
+        static let onDanger = Color(light: 0xFFFFFF, dark: 0xFFFFFF)
         /// Фон плашки ошибки.
-        static let dangerSurface = Color(light: 0xFBE9E9, dark: 0x3A1B22)
+        static let dangerSurface = Color(light: 0x5A214A, dark: 0x5A214A)
         /// Текст на плашке ошибки.
-        static let dangerText = Color(light: 0x8F1A1A, dark: 0xFF9A9A)
+        static let dangerText = Color(light: 0xFFD2DC, dark: 0xFFD2DC)
         
         /// Успех, например «это матч».
-        static let success = Color(light: 0x1F7A52, dark: 0x4CC38A)
+        static let success = Color(light: 0xCAFF72, dark: 0xCAFF72)
+
+        /// Светло-сиреневый вторичный акцент.
+        static let secondaryAccent = Color(light: 0xB895FF, dark: 0xB895FF)
+
+        /// Коралловый акцент для лайка и выразительных декоративных элементов.
+        static let coral = Color(light: 0xFF4D73, dark: 0xFF4D73)
         
         /// Рамка стеклянных элементов в версиях до iOS 26 (на iOS 26 рамку рисует система).
         static let glassBorder = Color.white.opacity(0.35)
