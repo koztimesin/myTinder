@@ -142,7 +142,7 @@ struct MainTabView: View {
     var body: some View {
         TabView(selection: $router.selectedTab) {
             
-            Tab("Лента", systemImage: "rectangle.stack", value: MainTab.feed) {
+            Tab("Лента", systemImage: "sparkles", value: MainTab.feed) {
                 FeedView(
                     viewModel: feedViewModel,
                     profilePhotoURL: editProfileViewModel.mainPhotoURL,
@@ -177,6 +177,7 @@ struct MainTabView: View {
         }
         .tint(AppTheme.Colors.accentText)
         .task { await matchesStore.run() }
+        .task { await editProfileViewModel.load() }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 Task { await matchesStore.reload() }
@@ -196,9 +197,10 @@ struct MainTabView: View {
                 viewModel: makeDiscoveryFilterViewModel(),
                 onClose: { isFilterPresented = false }
             )
-            .presentationDetents([.large])
+            .presentationDetents([.medium])
             .presentationDragIndicator(.hidden)
             .presentationCornerRadius(AppTheme.Radius.card)
+            .presentationBackground(AppTheme.Colors.filterBackground)
         }
     }
     
@@ -252,7 +254,7 @@ struct MainTabView: View {
     
     /// Собирает модель окна «Это матч».
     /// - Parameter match: матч, для которого показывается окно.
-    /// - Returns: модель с действиями «Написать» и «Продолжить».
+    /// - Returns: модель быстрой отправки сообщения и закрытия окна.
     private func makeCelebrationViewModel(for match: MatchSummary) -> MatchCelebrationViewModel {
         let router = router
         let store = matchesStore
@@ -260,7 +262,7 @@ struct MainTabView: View {
         return container.makeMatchCelebrationViewModel(
             match: match,
             myPhotoPath: currentProfile.profile.photoPaths.first,
-            onWrite: {
+            onSent: {
                 router.openChat(match.id)
                 store.dismissCelebration(id: match.id)
             },

@@ -132,19 +132,20 @@ final class AppContainer {
     /// - Parameters:
     ///   - match: новый матч.
     ///   - myPhotoPath: путь главного фото текущего пользователя.
-    ///   - onWrite: что делать по «Написать».
-    ///   - onDismiss: что делать по «Продолжить».
+    ///   - onSent: открыть чат после успешной отправки.
+    ///   - onDismiss: закрыть окно без отправки сообщения.
     func makeMatchCelebrationViewModel(
         match: MatchSummary,
         myPhotoPath: String?,
-        onWrite: @escaping @MainActor () -> Void,
+        onSent: @escaping @MainActor () -> Void,
         onDismiss: @escaping @MainActor () -> Void
     ) -> MatchCelebrationViewModel {
         MatchCelebrationViewModel(
             match: match,
             myPhotoPath: myPhotoPath,
             photoURLProvider: photoURLProvider,
-            onWrite: onWrite,
+            chatRepository: chatRepository,
+            onSent: onSent,
             onDismiss: onDismiss
         )
     }

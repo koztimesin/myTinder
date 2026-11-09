@@ -19,10 +19,10 @@ struct MessageBubbleView: View {
             
             Text(viewModel.text)
                 .font(AppTheme.Typography.body)
-                .foregroundStyle(viewModel.isFromMe ? AppTheme.Colors.onAccent : AppTheme.Colors.textPrimary)
+                .foregroundStyle(viewModel.isFromMe ? AppTheme.Colors.background : AppTheme.Colors.textPrimary)
                 .padding(.horizontal, AppTheme.Spacing.m)
                 .padding(.vertical, 10)
-                .background { bubbleShape.fill(viewModel.isFromMe ? AppTheme.Colors.accent : AppTheme.Colors.surface) }
+                .background { bubbleShape.fill(viewModel.isFromMe ? AppTheme.Colors.secondaryAccent : AppTheme.Colors.surface) }
                 .overlay {
                     if !viewModel.isFromMe {
                         bubbleShape.strokeBorder(AppTheme.Colors.separator, lineWidth: 1)
@@ -95,8 +95,13 @@ struct DaySeparatorView: View {
         Text(viewModel.title)
             .font(AppTheme.Typography.caption)
             .foregroundStyle(AppTheme.Colors.textSecondary)
-            .frame(maxWidth: .infinity)
             .padding(.vertical, AppTheme.Spacing.s)
+            .padding(.horizontal, AppTheme.Spacing.m)
+            .background(AppTheme.Colors.surface, in: Capsule())
             .accessibilityAddTraits(.isHeader)
     }
+}
+
+#Preview {
+    DaySeparatorView(viewModel: .init(id: "1", title: "Сегодня"))
 }

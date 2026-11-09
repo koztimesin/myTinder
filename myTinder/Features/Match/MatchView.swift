@@ -87,7 +87,7 @@ struct MatchesView<ViewModel: MatchesViewModelProtocol>: View {
     private var list: some View {
         ScrollView {
             
-            LazyVStack(alignment: .leading, spacing: 0) {
+            LazyVStack(alignment: .leading, spacing: AppTheme.Spacing.s) {
                 
                 if let message = viewModel.errorMessage {
                     errorBanner(message)
@@ -102,18 +102,11 @@ struct MatchesView<ViewModel: MatchesViewModelProtocol>: View {
                     sectionHeader("Сообщения")
                     
                     ForEach(viewModel.dialogRows) { row in
-                        
                         MatchRowView(viewModel: row)
-                        
-                        if row.id != viewModel.dialogRows.last?.id {
-                            Rectangle()
-                                .fill(AppTheme.Colors.separator)
-                                .frame(height: 1)
-                                .padding(.leading, AppTheme.Spacing.m)
-                        }
                     }
                 }
             }
+            .padding(.bottom, AppTheme.Spacing.l)
         }
         .refreshable {
             await viewModel.refresh()
@@ -142,7 +135,8 @@ struct MatchesView<ViewModel: MatchesViewModelProtocol>: View {
             .font(.system(.headline, design: .rounded))
             .foregroundStyle(AppTheme.Colors.textPrimary)
             .padding(.horizontal, AppTheme.Spacing.m)
-            .padding(.vertical, AppTheme.Spacing.s)
+            .padding(.top, AppTheme.Spacing.m)
+            .padding(.bottom, AppTheme.Spacing.xs)
             .accessibilityAddTraits(.isHeader)
     }
     

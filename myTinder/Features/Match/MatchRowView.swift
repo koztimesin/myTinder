@@ -51,10 +51,12 @@ struct MatchRowView: View {
                 }
             }
             .padding(.horizontal, AppTheme.Spacing.m)
-            .padding(.vertical, AppTheme.Spacing.s)
-            .frame(minHeight: 44)
-            .contentShape(Rectangle())
+            .padding(.vertical, 12)
+            .frame(minHeight: 76)
+            .background(AppTheme.Colors.surface, in: RoundedRectangle(cornerRadius: AppTheme.Radius.medium, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: AppTheme.Radius.medium, style: .continuous))
         }
+        .padding(.horizontal, AppTheme.Spacing.m)
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text("\(viewModel.name). \(viewModel.preview). \(viewModel.timeText)" + (viewModel.unreadCount > 0 ? ". Непрочитанных: \(viewModel.unreadCount)" : "")))

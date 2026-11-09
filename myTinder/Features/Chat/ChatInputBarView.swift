@@ -31,7 +31,7 @@ struct ChatInputBarView: View {
                 .padding(.horizontal, AppTheme.Spacing.m)
                 .padding(.vertical, 12)
                 .frame(minHeight: AppTheme.Size.minTapTarget)
-                .appGlass(in: RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous))
+                .background(AppTheme.Colors.surfaceMuted, in: RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous))
             
             Button {
                 viewModel.onSend()
@@ -47,5 +47,6 @@ struct ChatInputBarView: View {
         }
         .padding(.horizontal, AppTheme.Spacing.m)
         .padding(.vertical, AppTheme.Spacing.s)
+        .background(AppTheme.Colors.background)
     }
 }

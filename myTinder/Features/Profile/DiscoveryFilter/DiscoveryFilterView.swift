@@ -1,3 +1,10 @@
+//
+//  DiscoveryFilterView.swift
+//  myTinder
+//
+//  Created by Ismail on 09.11.2026.
+//
+
 import SwiftUI
 
 struct DiscoveryFilterView: View {
@@ -16,23 +23,28 @@ struct DiscoveryFilterView: View {
     var body: some View {
         @Bindable var vm = viewModel
 
-        NavigationStack {
+        VStack(spacing: 0) {
+            filterHeader
+
             ScrollView {
-                VStack(alignment: .leading, spacing: AppTheme.Spacing.l) {
-                    ProfileFormSection("Кого показывать") {
-                        Picker("Кого показывать", selection: $vm.interest) {
-                            ForEach(InterestOption.allCases) { option in
-                                Text(option.title).tag(InterestOption?.some(option))
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                        .tint(AppTheme.Colors.accent)
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.xl) {
+                    VStack(alignment: .leading, spacing: AppTheme.Spacing.m) {
+                        Text("Кого показывать")
+                            .font(AppTheme.Typography.body)
+                            .foregroundStyle(AppTheme.Colors.textPrimary)
+
+                        InterestSelectionControl(selection: $vm.interest)
                     }
 
-                    ProfileFormSection(
-                        "Возраст",
-                        subtitle: "От \(Int(vm.minAge)) до \(Int(vm.maxAge)) лет"
-                    ) {
+                    VStack(alignment: .leading, spacing: AppTheme.Spacing.m) {
+                        HStack {
+                            Text("Предпочтительный возраст")
+                            Spacer()
+                            Text("\(Int(vm.minAge))–\(Int(vm.maxAge))")
+                        }
+                        .font(AppTheme.Typography.body)
+                        .foregroundStyle(AppTheme.Colors.textPrimary)
+
                         AgeRangeSlider(
                             lowerValue: $vm.minAge,
                             upperValue: $vm.maxAge,
@@ -44,22 +56,11 @@ struct DiscoveryFilterView: View {
                         ErrorBannerView(viewModel: ErrorBannerViewModel(message: message))
                     }
                 }
-                .padding(AppTheme.Spacing.m)
+                .padding(.horizontal, AppTheme.Spacing.l)
+                .padding(.top, AppTheme.Spacing.l)
+                .padding(.bottom, AppTheme.Spacing.xl)
             }
             .scrollDisabled(vm.isSaving)
-            .background(AppTheme.Colors.background)
-            .navigationTitle("Фильтры")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button(action: onClose) {
-                        Image(systemName: "xmark")
-                            .frame(width: AppTheme.Size.minTapTarget, height: AppTheme.Size.minTapTarget)
-                    }
-                    .foregroundStyle(AppTheme.Colors.textPrimary)
-                    .accessibilityLabel("Закрыть фильтры")
-                }
-            }
             .safeAreaInset(edge: .bottom) {
                 Button {
                     Task { await vm.apply() }
@@ -70,12 +71,73 @@ struct DiscoveryFilterView: View {
                         Text("Применить фильтры")
                     }
                 }
-                .buttonStyle(.app(.primary))
+                .font(AppTheme.Typography.button)
+                .foregroundStyle(AppTheme.Colors.background)
+                .frame(maxWidth: .infinity, minHeight: 64)
+                .background(AppTheme.Colors.secondaryAccent, in: RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous))
+                .opacity(vm.canApply ? 1 : 0.48)
                 .disabled(!vm.canApply)
-                .padding(.horizontal, AppTheme.Spacing.m)
-                .padding(.vertical, AppTheme.Spacing.s)
-                .background(AppTheme.Colors.background)
+                .padding(.horizontal, AppTheme.Spacing.l)
+                .padding(.vertical, AppTheme.Spacing.m)
+                .background(AppTheme.Colors.filterBackground)
             }
         }
+        .background(AppTheme.Colors.filterBackground.ignoresSafeArea())
+    }
+
+    private var filterHeader: some View {
+        HStack {
+            Text("Фильтры")
+                .font(AppTheme.Typography.title)
+                .foregroundStyle(AppTheme.Colors.textPrimary)
+                .accessibilityAddTraits(.isHeader)
+
+            Spacer()
+
+            Button(action: onClose) {
+                Image(systemName: "xmark")
+                    .font(.system(.headline, weight: .semibold))
+                    .foregroundStyle(AppTheme.Colors.textPrimary)
+                    .frame(width: 56, height: 56)
+                    .background(AppTheme.Colors.surfaceMuted, in: Circle())
+            }
+            .accessibilityLabel("Закрыть фильтры")
+        }
+        .padding(.horizontal, AppTheme.Spacing.l)
+        .padding(.top, AppTheme.Spacing.m)
+        .padding(.bottom, AppTheme.Spacing.s)
+    }
+}
+
+/// Крупные кнопки выбора вместо системного segmented picker.
+private struct InterestSelectionControl: View {
+
+    @Binding var selection: InterestOption?
+
+    var body: some View {
+        HStack(spacing: AppTheme.Spacing.s) {
+            ForEach(InterestOption.allCases) { option in
+                let isSelected = selection == option
+
+                Button {
+                    selection = option
+                } label: {
+                    Text(option.title)
+                        .font(AppTheme.Typography.button)
+                        .foregroundStyle(isSelected ? AppTheme.Colors.background : AppTheme.Colors.accent)
+                        .frame(maxWidth: .infinity, minHeight: 58)
+                        .background(isSelected ? AppTheme.Colors.accent : Color.clear, in: Capsule())
+                        .overlay {
+                            if !isSelected {
+                                Capsule().stroke(AppTheme.Colors.accent, lineWidth: 1.5)
+                            }
+                        }
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Кого показывать")
     }
 }
