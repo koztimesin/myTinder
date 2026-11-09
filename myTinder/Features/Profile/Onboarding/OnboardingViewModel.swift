@@ -51,7 +51,7 @@ final class OnboardingViewModel {
     ) {
         self.profiles = profiles
         self.photoRepository = photoRepository
-        self.photos = initialPhotos
+        self.photos = Array(initialPhotos.prefix(ProfileValidation.maxPhotos))
         self.onCreated = onCreated
         self.onSignOut = onSignOut
     }
