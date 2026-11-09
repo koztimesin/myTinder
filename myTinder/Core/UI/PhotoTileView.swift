@@ -19,14 +19,15 @@ enum PhotoTileMetrics {
 struct PhotoTileView: View {
     
     private let viewModel: PhotoTileViewModel
+    private let fillsAvailableSpace: Bool
     
-    init(viewModel: PhotoTileViewModel) {
+    init(viewModel: PhotoTileViewModel, fillsAvailableSpace: Bool = false) {
         self.viewModel = viewModel
+        self.fillsAvailableSpace = fillsAvailableSpace
     }
     
     var body: some View {
-        Color.clear
-            .aspectRatio(PhotoTileMetrics.aspectRatio, contentMode: .fit)
+        tile
             .overlay {
                 image
             }
@@ -42,6 +43,17 @@ struct PhotoTileView: View {
                 makePhotoMain
             }
             .accessibilityElement(children: .contain)
+    }
+
+    @ViewBuilder
+    private var tile: some View {
+        if fillsAvailableSpace {
+            Color.clear
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            Color.clear
+                .aspectRatio(PhotoTileMetrics.aspectRatio, contentMode: .fit)
+        }
     }
     
     @ViewBuilder

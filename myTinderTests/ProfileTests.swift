@@ -184,41 +184,30 @@ struct OnboardingViewModelTests {
 @MainActor
 struct EditProfileViewModelTests {
     @Test
-    func savesBioAndDiscoveryPreferences() async {
+    func savesBioWithoutChangingDiscoveryPreferences() async {
         var updated = TestFixtures.profile()
         updated.bio = "Новое описание"
-        updated.interestedIn = [.male, .female]
-        updated.minAge = 22
-        updated.maxAge = 34
         let profiles = ProfileRepositoryStub()
         profiles.updateResult = .success(updated)
         let photos = PhotoRepositoryStub()
-        var discoveryUpdates = 0
         var received: Profile?
         let viewModel = EditProfileViewModel(
             profile: TestFixtures.profile(),
             profiles: profiles,
             photoRepository: photos,
             urlProvider: PhotoURLProviderStub(),
-            onUpdated: { received = $0 },
-            onDiscoveryUpdated: { discoveryUpdates += 1 },
-            onOpenSettings: {},
-            onSignOut: {}
+            onUpdated: { received = $0 }
         )
         viewModel.bio = " Новое описание "
-        viewModel.interest = .everyone
-        viewModel.minAge = 22
-        viewModel.maxAge = 34
 
         await viewModel.save()
 
         let changes = profiles.updates.first
         #expect(changes?.bio == "Новое описание")
-        #expect(Set(changes?.interestedIn ?? []) == Set([.male, .female]))
-        #expect(changes?.minAge == 22)
-        #expect(changes?.maxAge == 34)
+        #expect(changes?.interestedIn == [.male])
+        #expect(changes?.minAge == 20)
+        #expect(changes?.maxAge == 30)
         #expect(received == updated)
-        #expect(discoveryUpdates == 1)
         #expect(!viewModel.canSave)
     }
 }

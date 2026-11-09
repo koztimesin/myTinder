@@ -8,28 +8,7 @@
 import Foundation
 import Supabase
 
-/// Доступ к матчам.
-protocol MatchRepositoryProtocol: Sendable {
-    /// Загружает все матчи текущего пользователя.
-    /// - Returns: матчи в порядке сервера: свежие по последнему сообщению (или по времени матча) выше.
-    func fetchMatches() async throws -> [MatchSummary]
-    
-    /// Открывает подписку на появление новых матчей текущего пользователя.
-    /// - Returns: поток идентификаторов новых матчей. Завершается при ошибке подключения
-    ///   или когда потребитель перестаёт его читать (подписка при этом закрывается).
-    func newMatchSignals() -> AsyncStream<UUID>
-
-    /// Открывает приватную подписку на удаление матчей текущего пользователя.
-    /// - Returns: поток идентификаторов удалённых матчей. Завершается при ошибке подключения
-    ///   или когда потребитель перестаёт его читать.
-    func deletedMatchSignals() -> AsyncStream<UUID>
-    
-    /// Открывает подписку на новые сообщения во всех диалогах текущего пользователя.
-    /// - Returns: поток сигналов; завершается при ошибке подключения или когда потребитель перестаёт его читать.
-    func messageSignals() -> AsyncStream<Void>
-}
-
-struct SupabaseMatchRepository {
+struct MatchRepository {
     
     let client: SupabaseClient
 }
@@ -44,7 +23,7 @@ private struct MatchDeletedBroadcast: Decodable {
     }
 }
 
-extension SupabaseMatchRepository: MatchRepositoryProtocol {
+extension MatchRepository: MatchRepositoryProtocol {
     
     func fetchMatches() async throws -> [MatchSummary] {
         let userID = try await client.auth.session.user.id

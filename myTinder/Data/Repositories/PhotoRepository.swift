@@ -1,5 +1,5 @@
 //
-//  SupabasePhotoRepository.swift
+//  PhotoRepository.swift
 //  myTinder
 //
 //  Created by Ismail on 23.10.2026.
@@ -8,7 +8,7 @@
 import Foundation
 import Supabase
 
-struct SupabasePhotoRepository {
+struct PhotoRepository {
     
     let client: SupabaseClient
     
@@ -17,7 +17,7 @@ struct SupabasePhotoRepository {
     }
 }
 
-extension SupabasePhotoRepository: PhotoRepositoryProtocol {
+extension PhotoRepository: PhotoRepositoryProtocol {
     
     func upload(_ jpegData: Data) async throws -> String {
         let uid = try await client.auth.session.user.id

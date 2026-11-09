@@ -14,14 +14,6 @@ enum SignUpResult {
     case needsEmailConfirmation
 }
 
-protocol AuthRepositoryProtocol: Sendable {
-    
-    func userStream() -> AsyncStream<AppUser?>
-    func signUp(email: String, password: String) async throws -> SignUpResult
-    func signIn(email: String, password: String) async throws
-    func signOut() async throws
-}
-
 final class AuthRepository {
     
     private let client: SupabaseClient

@@ -19,6 +19,12 @@ struct FeedView<ViewModel: FeedViewModelProtocol>: View {
     
     /// Модель экрана.
     @State private var viewModel: ViewModel
+    /// Главное фото текущего пользователя для кнопки профиля.
+    let profilePhotoURL: URL?
+    /// Открывает фильтры выдачи.
+    let onOpenFilters: @MainActor () -> Void
+    /// Переключает на вкладку профиля.
+    let onOpenProfile: @MainActor () -> Void
     /// Смещение верхней карточки при перетаскивании.
     @State private var dragOffset: CGSize = .zero
     /// Летит ли карточка прочь: на это время новые жесты и нажатия игнорируются.
@@ -47,9 +53,21 @@ struct FeedView<ViewModel: FeedViewModelProtocol>: View {
     /// Пружина раскрытия и сворачивания.
     private let expandAnimation = Animation.spring(response: 0.5, dampingFraction: 0.85)
     
-    /// - Parameter viewModel: модель экрана, собирается снаружи (`AppContainer.makeFeedViewModel()`).
-    init(viewModel: ViewModel) {
+    /// - Parameters:
+    ///   - viewModel: модель экрана, собирается снаружи (`AppContainer.makeFeedViewModel()`).
+    ///   - profilePhotoURL: главное фото текущего пользователя.
+    ///   - onOpenFilters: открывает модальную шторку фильтров.
+    ///   - onOpenProfile: открывает профиль.
+    init(
+        viewModel: ViewModel,
+        profilePhotoURL: URL? = nil,
+        onOpenFilters: @escaping @MainActor () -> Void = {},
+        onOpenProfile: @escaping @MainActor () -> Void = {}
+    ) {
         self.viewModel = viewModel
+        self.profilePhotoURL = profilePhotoURL
+        self.onOpenFilters = onOpenFilters
+        self.onOpenProfile = onOpenProfile
     }
     
     var body: some View {
@@ -69,6 +87,14 @@ struct FeedView<ViewModel: FeedViewModelProtocol>: View {
             .overlay(alignment: .top) {
                 errorBanner
                     .padding(.top, insets.top)
+            }
+            .overlay(alignment: .top) {
+                if expansion < 0.5 {
+                    feedHeader
+                        .padding(.top, insets.top + AppTheme.Spacing.s)
+                        .padding(.horizontal, AppTheme.Spacing.m)
+                        .transition(.opacity)
+                }
             }
             // Поднимаем область к верхнему краю экрана: раскрытая карточка уходит под статус-бар.
             .offset(y: -insets.top)
@@ -116,6 +142,46 @@ struct FeedView<ViewModel: FeedViewModelProtocol>: View {
                 viewModel.closeCandidate()
             }
         }
+    }
+
+    /// Заголовок ленты с фильтрами и быстрым переходом в профиль.
+    private var feedHeader: some View {
+        HStack(spacing: AppTheme.Spacing.s) {
+            Text("myTinder")
+                .font(AppTheme.Typography.title)
+                .foregroundStyle(AppTheme.Colors.textPrimary)
+
+            Spacer()
+
+            Button(action: onOpenFilters) {
+                Image(systemName: "slider.horizontal.3")
+                    .font(.system(.headline, weight: .bold))
+                    .foregroundStyle(AppTheme.Colors.textPrimary)
+                    .frame(width: AppTheme.Size.minTapTarget, height: AppTheme.Size.minTapTarget)
+                    .background(AppTheme.Colors.surface, in: Circle())
+            }
+            .accessibilityLabel("Открыть фильтры")
+
+            Button(action: onOpenProfile) {
+                AsyncImage(url: profilePhotoURL) { phase in
+                    if case .success(let image) = phase {
+                        image.resizable().scaledToFill()
+                    } else {
+                        AppTheme.Colors.surfaceMuted
+                            .overlay {
+                                Image(systemName: "person.fill")
+                                    .foregroundStyle(AppTheme.Colors.secondaryAccent)
+                            }
+                    }
+                }
+                .frame(width: AppTheme.Size.minTapTarget, height: AppTheme.Size.minTapTarget)
+                .clipShape(Circle())
+                .overlay(Circle().stroke(AppTheme.Colors.accent, lineWidth: 2))
+            }
+            .accessibilityLabel("Открыть профиль")
+        }
+        .padding(AppTheme.Spacing.s)
+        .background(AppTheme.Colors.background.opacity(0.9), in: Capsule())
     }
     
     // MARK: - Состояния

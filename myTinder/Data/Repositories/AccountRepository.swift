@@ -7,20 +7,13 @@
 
 import Supabase
 
-/// Необратимые операции над аккаунтом текущего пользователя.
-protocol AccountRepositoryProtocol: Sendable {
-
-    /// Удаляет аккаунт и связанные с ним данные на сервере.
-    func deleteAccount() async throws
-}
-
 /// Удаляет аккаунт через защищённую Supabase Edge Function.
-struct SupabaseAccountRepository {
+struct AccountRepository {
 
     let client: SupabaseClient
 }
 
-extension SupabaseAccountRepository: AccountRepositoryProtocol {
+extension AccountRepository: AccountRepositoryProtocol {
 
     func deleteAccount() async throws {
         try await client.functions.invoke("delete-account")

@@ -8,27 +8,13 @@
 import Foundation
 import Supabase
 
-/// Доступ к ленте и свайпам.
-protocol FeedRepositoryProtocol: Sendable {
-    /// Запрашивает пакет анкет, которых пользователь ещё не свайпал.
-    /// - Parameter limit: сколько анкет запросить (сервер ограничивает 50).
-    /// - Returns: профили в случайном порядке; пустой массив, если анкеты закончились.
-    func fetchFeed(limit: Int) async throws -> [Profile]
-
-    /// Записывает свайп текущего пользователя.
-    /// - Parameters:
-    ///   - targetID: профиль, на который свайпнули.
-    ///   - liked: `true` — лайк, `false` — дизлайк.
-    func sendSwipe(targetID: UUID, liked: Bool) async throws
-}
-
-/// Реализация `FeedRepositoryProtocol` поверх Supabase.
-struct SupabaseFeedRepository {
-    /// Клиент Supabase.
+struct FeedRepository {
+    
     let client: SupabaseClient
 }
 
-extension SupabaseFeedRepository: FeedRepositoryProtocol {
+extension FeedRepository: FeedRepositoryProtocol {
+    
     func fetchFeed(limit: Int) async throws -> [Profile] {
         let dtos: [ProfileDTO] = try await client
             .rpc("get_feed", params: GetFeedParams(limit: limit))

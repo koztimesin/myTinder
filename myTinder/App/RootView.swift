@@ -11,7 +11,6 @@ struct RootView: View {
     
     let session: SessionStore
     let container: AppContainer
-    @AppStorage(AppAppearance.storageKey) private var appearanceRawValue = AppAppearance.system.rawValue
     
     var body: some View {
         
@@ -32,11 +31,6 @@ struct RootView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(AppTheme.Colors.background)
-        .preferredColorScheme(appearance.colorScheme)
-    }
-
-    /// Выбранный режим оформления с безопасным откатом к системному.
-    private var appearance: AppAppearance {
-        AppAppearance(rawValue: appearanceRawValue) ?? .system
+        .preferredColorScheme(.dark)
     }
 }

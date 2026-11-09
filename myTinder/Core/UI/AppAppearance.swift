@@ -9,6 +9,7 @@ import SwiftUI
 
 /// Пользовательский режим оформления приложения.
 enum AppAppearance: String, CaseIterable, Identifiable {
+    
     case system
     case light
     case dark

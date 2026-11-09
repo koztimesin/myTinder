@@ -19,11 +19,8 @@ struct SettingsView<ViewModel: SettingsViewModelProtocol>: View {
     }
 
     var body: some View {
-        @Bindable var vm = viewModel
-
         ScrollView {
             VStack(alignment: .leading, spacing: AppTheme.Spacing.l) {
-                appearanceSection(selection: $vm.appearance)
                 accountSection
             }
             .padding(.horizontal, AppTheme.Spacing.m)
@@ -33,21 +30,6 @@ struct SettingsView<ViewModel: SettingsViewModelProtocol>: View {
         .background(AppTheme.Colors.background)
         .navigationTitle("Настройки")
         .navigationBarTitleDisplayMode(.inline)
-    }
-
-    /// Выбор системной, светлой или тёмной темы.
-    /// - Parameter selection: выбранный режим.
-    private func appearanceSection(selection: Binding<AppAppearance>) -> some View {
-        ProfileFormSection("Оформление", subtitle: "Тема применяется ко всему приложению") {
-            Picker("Тема приложения", selection: selection) {
-                ForEach(AppAppearance.allCases) { appearance in
-                    Text(appearance.title)
-                        .tag(appearance)
-                }
-            }
-            .pickerStyle(.segmented)
-            .tint(AppTheme.Colors.accent)
-        }
     }
 
     /// Раздел опасных действий с аккаунтом.
