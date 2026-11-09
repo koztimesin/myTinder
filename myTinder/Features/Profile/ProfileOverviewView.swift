@@ -27,6 +27,7 @@ struct ProfileOverviewView<ViewModel: EditProfileViewModelProtocol>: View {
 
                 Button("Редактировать профиль", action: onEdit)
                     .buttonStyle(.app(.primary))
+                    .fixedSize()
 
                 VStack(spacing: AppTheme.Spacing.s) {
                     profileAction(
@@ -81,7 +82,7 @@ struct ProfileOverviewView<ViewModel: EditProfileViewModelProtocol>: View {
             .accessibilityLabel("Главное фото профиля")
 
             Text("\(viewModel.name), \(viewModel.age)")
-                .font(AppTheme.Typography.title)
+                .font(AppTheme.Typography.largeTitle)
                 .foregroundStyle(AppTheme.Colors.textPrimary)
                 .multilineTextAlignment(.center)
         }

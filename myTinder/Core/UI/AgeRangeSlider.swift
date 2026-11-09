@@ -93,10 +93,8 @@ struct AgeRangeSlider: View {
         onAdjust: @escaping (AccessibilityAdjustmentDirection) -> Void
     ) -> some View {
         Circle()
-            .fill(AppTheme.Colors.surface)
+            .fill(AppTheme.Colors.accent)
             .frame(width: thumbDiameter, height: thumbDiameter)
-            .overlay(Circle().stroke(AppTheme.Colors.accent, lineWidth: 3))
-            .shadow(color: Color.black.opacity(0.15), radius: 3, y: 1)
             .frame(width: controlHeight, height: controlHeight)
             .contentShape(Rectangle())
             .position(x: position, y: controlHeight / 2)

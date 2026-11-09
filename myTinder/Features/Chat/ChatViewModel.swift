@@ -267,7 +267,7 @@ extension ChatViewModel: ChatViewModelProtocol {
     var title: String { partner.name }
 
     var avatar: MatchAvatarViewModel {
-        MatchAvatarViewModel(name: partner.name, photoURL: partnerPhotoURL, diameter: 32, showsRing: false)
+        MatchAvatarViewModel(name: partner.name, photoURL: partnerPhotoURL, diameter: 40, showsRing: false)
     }
 
     var state: ChatScreenState {

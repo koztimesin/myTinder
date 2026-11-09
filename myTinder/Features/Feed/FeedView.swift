@@ -50,6 +50,8 @@ struct FeedView<ViewModel: FeedViewModelProtocol>: View {
     private let expansionDragRange: CGFloat = 320
     /// Размер круглых кнопок поверх фото.
     private let circleControlSize: CGFloat = 44
+    /// Пространство под фирменный заголовок свёрнутой ленты.
+    private let collapsedHeaderHeight: CGFloat = 68
     /// Пружина раскрытия и сворачивания.
     private let expandAnimation = Animation.spring(response: 0.5, dampingFraction: 0.85)
     
@@ -350,7 +352,7 @@ struct FeedView<ViewModel: FeedViewModelProtocol>: View {
         let side = AppTheme.Spacing.s * factor
         
         return EdgeInsets(
-            top: (insets.top + AppTheme.Spacing.s) * factor,
+            top: (insets.top + collapsedHeaderHeight + AppTheme.Spacing.s) * factor,
             leading: side,
             bottom: side,
             trailing: side

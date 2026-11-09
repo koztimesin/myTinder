@@ -18,10 +18,15 @@ protocol MatchCelebrationViewModelProtocol: AnyObject, Observable {
     var myAvatar: MatchAvatarViewModel { get }
     /// Аватар собеседника.
     var partnerAvatar: MatchAvatarViewModel { get }
+    /// Быстрое сообщение собеседнику.
+    var draft: String { get set }
+    var canSend: Bool { get }
+    var isSending: Bool { get }
+    var errorMessage: String? { get }
     /// Получает ссылки на оба фото.
     func loadPhotos() async
-    /// Нажали «Написать».
-    func write()
-    /// Нажали «Продолжить».
+    /// Отправляет быстрое сообщение и при успехе открывает диалог.
+    func send() async
+    /// Закрывает окно без сообщения.
     func dismiss()
 }

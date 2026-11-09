@@ -35,7 +35,7 @@ private struct FeedActionButtonBody: View {
     var body: some View {
         let content = configuration.label
             .font(.system(size: iconSize, weight: .heavy, design: .rounded))
-            .foregroundStyle(kind == .like ? AppTheme.Colors.onAccent : Color.white)
+            .foregroundStyle(Color.white)
             .frame(width: diameter, height: diameter)
             .contentShape(Circle())
             .scaleEffect(configuration.isPressed && !reduceMotion ? 0.92 : 1)
@@ -44,10 +44,12 @@ private struct FeedActionButtonBody: View {
         switch kind {
         case .like:
             content
-                .background(AppTheme.Colors.accent, in: Circle())
+                .background(AppTheme.Colors.coral, in: Circle())
+                .shadow(color: AppTheme.Colors.coral.opacity(0.28), radius: 14, y: 6)
         case .dislike:
             content
-                .appGlass(in: Circle())
+                .background(AppTheme.Colors.surface, in: Circle())
+                .overlay(Circle().stroke(AppTheme.Colors.secondaryAccent.opacity(0.6), lineWidth: 1))
         }
     }
     

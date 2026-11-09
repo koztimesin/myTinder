@@ -26,6 +26,9 @@ enum AppTheme {
         static let surface = Color(light: 0x3A2077, dark: 0x3A2077)
         /// Фон полей только для чтения и неактивных элементов.
         static let surfaceMuted = Color(light: 0x4B2B91, dark: 0x4B2B91)
+
+        /// Более светлый фиолетовый фон модальной шторки фильтров.
+        static let filterBackground = Color(light: 0x3D2183, dark: 0x3D2183)
         
         /// Основной текст.
         static let textPrimary = Color(light: 0xFFF9FF, dark: 0xFFF9FF)

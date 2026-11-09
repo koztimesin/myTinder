@@ -139,6 +139,7 @@ struct ChatView<ViewModel: ChatViewModelProtocol>: View {
                     }
                 }
                 .padding(.horizontal, AppTheme.Spacing.m)
+                .padding(.vertical, AppTheme.Spacing.s)
             }
             .defaultScrollAnchor(.bottom)
             .scrollDismissesKeyboard(.interactively)
@@ -161,6 +162,7 @@ struct ChatView<ViewModel: ChatViewModelProtocol>: View {
         switch row {
         case .daySeparator(let model):
             DaySeparatorView(viewModel: model)
+                .padding()
         case .message(let model):
             MessageBubbleView(viewModel: model)
         }
@@ -202,7 +204,8 @@ final class ChatPreviewViewModel {
         )),
         .message(MessageBubbleViewModel(
             id: UUID(), text: "Отлично, ходил в горы", timeText: "12:41", isFromMe: true,
-            delivery: .sending, senderName: "Алина", onRetry: {}, onDiscard: {}
+//            delivery: .sending, senderName: "Алина", onRetry: {}, onDiscard: {}
+            delivery: .sent, senderName: "Алина", onRetry: {}, onDiscard: {}
         ))
     ]
     var lastRowID: String? { rows.last?.id }
