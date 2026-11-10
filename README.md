@@ -1,6 +1,18 @@
 # myTinder
 
-Приложения для знакомств в стиле Tinder, написанный на SwiftUI и Supabase. Проект охватывает полный MVP-сценарий: создание профиля, персонализированную ленту, свайпы, матчи, realtime-чат и инструменты безопасности.
+Приложение для знакомств в стиле Tinder, написанное на SwiftUI и Supabase. Проект охватывает полный MVP-сценарий: создание профиля, персонализированную ленту, свайпы, матчи, realtime-чат и инструменты безопасности.
+
+## Демонстрация
+
+<p align="center">
+  <img src="docs/media/feed-screen.png" width="30%" alt="Лента анкет">
+  <img src="docs/media/match-screen.png" width="30%" alt="Экран нового матча">
+  <img src="docs/media/matches-screen.png" width="30%" alt="Список матчей и диалогов">
+</p>
+
+- [Свайпы в ленте](docs/media/feed-swiping.mp4)
+- [Появление нового матча](docs/media/match.mp4)
+- [Переписка в realtime-чате](docs/media/chatting.mp4)
 
 ## Стек
 
