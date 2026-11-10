@@ -108,6 +108,84 @@ struct OnboardingViewModelTests {
     }
 
     @Test
+    func navigatesAllSixStepsAndPreservesEnteredData() {
+        let viewModel = OnboardingViewModel(
+            profiles: ProfileRepositoryStub(),
+            photoRepository: PhotoRepositoryStub(),
+            initialPhotos: [TestFixtures.localPhoto()],
+            onCreated: { _ in },
+            onSignOut: {}
+        )
+
+        #expect(viewModel.currentStep == .name)
+        #expect(!viewModel.canAdvance)
+
+        viewModel.name = "Алина"
+        viewModel.advance()
+        #expect(viewModel.currentStep == .birthDate)
+
+        viewModel.birthDate = Calendar.utc.date(byAdding: .year, value: -25, to: .now)!
+        viewModel.advance()
+        #expect(viewModel.currentStep == .gender)
+
+        viewModel.gender = .female
+        viewModel.advance()
+        #expect(viewModel.currentStep == .interest)
+
+        viewModel.interest = .male
+        viewModel.advance()
+        #expect(viewModel.currentStep == .photos)
+
+        viewModel.advance()
+        #expect(viewModel.currentStep == .bio)
+
+        viewModel.bio = "Описание"
+        viewModel.goBack()
+        viewModel.goBack()
+
+        #expect(viewModel.currentStep == .interest)
+        #expect(viewModel.name == "Алина")
+        #expect(viewModel.gender == .female)
+        #expect(viewModel.interest == .male)
+        #expect(viewModel.bio == "Описание")
+        #expect(viewModel.tiles.count == 1)
+    }
+
+    @Test
+    func photoStepRequiresAtLeastOnePhoto() {
+        let viewModel = OnboardingViewModel(
+            profiles: ProfileRepositoryStub(),
+            photoRepository: PhotoRepositoryStub(),
+            onCreated: { _ in },
+            onSignOut: {}
+        )
+        viewModel.name = "Алина"
+        viewModel.birthDate = Calendar.utc.date(byAdding: .year, value: -25, to: .now)!
+        viewModel.gender = .female
+        viewModel.interest = .male
+
+        for _ in 0..<4 { viewModel.advance() }
+
+        #expect(viewModel.currentStep == .photos)
+        #expect(!viewModel.canAdvance)
+        viewModel.advance()
+        #expect(viewModel.currentStep == .photos)
+    }
+
+    @Test
+    func doesNotUploadBeforeFinalStep() async {
+        let profiles = ProfileRepositoryStub()
+        let photos = PhotoRepositoryStub()
+        let viewModel = configuredOnboarding(profiles: profiles, photos: photos)
+        viewModel.goBack()
+
+        await viewModel.submit()
+
+        #expect(photos.uploadedData.isEmpty)
+        #expect(profiles.createdProfiles.isEmpty)
+    }
+
+    @Test
     func createsNormalizedProfileWithDefaultFilters() async {
         let created = TestFixtures.profile(photoPaths: ["new.jpg"])
         let profiles = ProfileRepositoryStub()
@@ -127,6 +205,7 @@ struct OnboardingViewModelTests {
         viewModel.bio = "  О себе  "
         viewModel.gender = .female
         viewModel.interest = .male
+        advanceToFinalStep(viewModel)
 
         await viewModel.submit()
 
@@ -197,7 +276,16 @@ struct OnboardingViewModelTests {
         viewModel.birthDate = Calendar.utc.date(byAdding: .year, value: -25, to: .now)!
         viewModel.gender = .female
         viewModel.interest = .male
+        advanceToFinalStep(viewModel)
         return viewModel
+    }
+
+    private func advanceToFinalStep(_ viewModel: OnboardingViewModel) {
+        while viewModel.currentStep != .bio {
+            let previous = viewModel.currentStep
+            viewModel.advance()
+            guard viewModel.currentStep != previous else { break }
+        }
     }
 }
 

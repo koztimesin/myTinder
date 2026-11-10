@@ -9,6 +9,18 @@ import SwiftUI
 import Observation
 import PhotosUI
 
+enum OnboardingStep: Int, CaseIterable, Sendable {
+    case name = 1
+    case birthDate
+    case gender
+    case interest
+    case photos
+    case bio
+
+    var next: OnboardingStep? { OnboardingStep(rawValue: rawValue + 1) }
+    var previous: OnboardingStep? { OnboardingStep(rawValue: rawValue - 1) }
+}
+
 @MainActor
 @Observable
 final class OnboardingViewModel {
@@ -23,6 +35,7 @@ final class OnboardingViewModel {
     // MARK: Состояние
     
     var interest: InterestOption?
+    private(set) var currentStep: OnboardingStep = .name
     private(set) var photos: [LocalPhoto] = []
     private(set) var isSubmitting = false
     private(set) var uploadedCount = 0
@@ -133,6 +146,42 @@ final class OnboardingViewModel {
 
 // MARK: - OnboardingViewModelProtocol
 extension OnboardingViewModel: OnboardingViewModelProtocol {
+
+    var totalSteps: Int { OnboardingStep.allCases.count }
+
+    var canAdvance: Bool {
+        guard !isSubmitting else { return false }
+
+        switch currentStep {
+        case .name:
+            return ProfileValidation.normalizedName(name) != nil
+        case .birthDate:
+            return ProfileValidation.isAdult(
+                birthDate: DateOnly.utcDate(fromLocal: birthDate),
+                calendar: .utc
+            )
+        case .gender:
+            return gender != nil
+        case .interest:
+            return interest != nil
+        case .photos:
+            return !photos.isEmpty && !isLoadingPhotos
+        case .bio:
+            return !isBioTooLong
+        }
+    }
+
+    func advance() {
+        guard canAdvance, let next = currentStep.next else { return }
+        errorMessage = nil
+        currentStep = next
+    }
+
+    func goBack() {
+        guard !isSubmitting, let previous = currentStep.previous else { return }
+        errorMessage = nil
+        currentStep = previous
+    }
     
     /// Плитки для сетки: каждая знает, как удалить фото и сделать его главным.
     /// Замыкания не хранятся, плитки собираются заново при каждом обращении, поэтому цикла ссылок нет.
@@ -170,6 +219,10 @@ extension OnboardingViewModel: OnboardingViewModelProtocol {
         !isSubmitting
         && !isLoadingPhotos
         && ProfileValidation.normalizedName(name) != nil
+        && ProfileValidation.isAdult(
+            birthDate: DateOnly.utcDate(fromLocal: birthDate),
+            calendar: .utc
+        )
         && gender != nil
         && interest != nil
         && !photos.isEmpty
@@ -222,12 +275,14 @@ extension OnboardingViewModel: OnboardingViewModelProtocol {
     /// отправки игнорируются.
     func submit() async {
         guard !isSubmitting else { return }
+        guard currentStep == .bio else { return }
         
         errorMessage = nil
         
         guard let cleanName = ProfileValidation.normalizedName(name),
               let gender,
               let interest,
+              !photos.isEmpty,
               case .success(let cleanBio) = ProfileValidation.normalizedBio(bio)
         else {
             errorMessage = "Проверьте имя и описание."

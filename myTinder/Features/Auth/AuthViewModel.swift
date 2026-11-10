@@ -12,7 +12,7 @@ import Observation
 @Observable
 final class AuthViewModel {
     
-    enum Mode {
+    enum Mode: Equatable {
         
         case signIn
         case signUp
@@ -21,9 +21,10 @@ final class AuthViewModel {
     var mode: Mode = .signIn
     var email = ""
     var password = ""
+    var passwordConfirmation = ""
     private(set) var isLoading = false
     private(set) var errorMessage: String?
-    private(set) var infoMessage: String?
+    private(set) var isAwaitingEmailConfirmation = false
     
     private let auth: AuthRepositoryProtocol
     
@@ -41,7 +42,12 @@ extension AuthViewModel: AuthViewModelProtocol {
             mode
         }
         set {
+            guard mode != newValue else { return }
             mode = newValue
+            password = ""
+            passwordConfirmation = ""
+            errorMessage = nil
+            isAwaitingEmailConfirmation = false
         }
     }
     
@@ -62,6 +68,24 @@ extension AuthViewModel: AuthViewModelProtocol {
             password = newValue
         }
     }
+
+    var passwordConfirmationText: String {
+        get {
+            passwordConfirmation
+        }
+        set {
+            passwordConfirmation = newValue
+        }
+    }
+
+    var passwordConfirmationError: String? {
+        guard mode == .signUp,
+              !passwordConfirmation.isEmpty,
+              passwordConfirmation != password
+        else { return nil }
+
+        return "Пароли не совпадают."
+    }
     
     
     var isLoadingState: Bool {
@@ -72,20 +96,32 @@ extension AuthViewModel: AuthViewModelProtocol {
         errorMessage
     }
     
-    var infoMessageText: String? {
-        infoMessage
-    }
-    
     var canSubmit: Bool {
         let minimumPasswordLength = mode == .signUp ? 8 : 6
-        return email.contains("@") && password.count >= minimumPasswordLength && !isLoading
+        let isConfirmationValid = mode == .signIn || passwordConfirmation == password
+        return email.contains("@")
+            && password.count >= minimumPasswordLength
+            && isConfirmationValid
+            && !isLoading
+    }
+
+    func switchMode() {
+        modeState = mode == .signIn ? .signUp : .signIn
+    }
+
+    func showSignIn() {
+        mode = .signIn
+        password = ""
+        passwordConfirmation = ""
+        errorMessage = nil
+        isAwaitingEmailConfirmation = false
     }
     
     func submit() async {
-        
+        guard canSubmit else { return }
+
         isLoading = true
         errorMessage = nil
-        infoMessage = nil
         
         defer {
             isLoading = false
@@ -100,7 +136,9 @@ extension AuthViewModel: AuthViewModelProtocol {
                 
             case .signUp:
                 if try await auth.signUp(email: email, password: password) == .needsEmailConfirmation {
-                    infoMessage = "Мы отправили письмо. Подтвердите почту и войдите."
+                    password = ""
+                    passwordConfirmation = ""
+                    isAwaitingEmailConfirmation = true
                 }
             }
         } catch {
@@ -109,16 +147,21 @@ extension AuthViewModel: AuthViewModelProtocol {
     }
 }
 
-protocol AuthViewModelProtocol {
+@MainActor
+protocol AuthViewModelProtocol: Observable, AnyObject {
     
     
     var modeState: AuthViewModel.Mode { get set }
     var emailText: String { get set }
     var passwordText: String { get set }
+    var passwordConfirmationText: String { get set }
+    var passwordConfirmationError: String? { get }
     var canSubmit: Bool { get }
     var isLoadingState: Bool { get }
     var errorMessageText: String? { get }
-    var infoMessageText: String? { get }
+    var isAwaitingEmailConfirmation: Bool { get }
     
+    func switchMode()
+    func showSignIn()
     func submit() async
 }
