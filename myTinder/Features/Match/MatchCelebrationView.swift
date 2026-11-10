@@ -41,10 +41,10 @@ struct MatchCelebrationView<ViewModel: MatchCelebrationViewModelProtocol>: View 
                 Spacer()
                     .frame(height: 50)
 
-                HStack(spacing: -AppTheme.Spacing.m) {
-                    MatchAvatarView(viewModel: vm.myAvatar)
+                HStack(spacing: -AppTheme.Spacing.l) {
+                    MatchPortraitCard(viewModel: vm.myAvatar)
                         .rotationEffect(.degrees(-7))
-                    MatchAvatarView(viewModel: vm.partnerAvatar)
+                    MatchPortraitCard(viewModel: vm.partnerAvatar)
                         .rotationEffect(.degrees(7))
                 }
 
@@ -129,6 +129,33 @@ struct MatchCelebrationView<ViewModel: MatchCelebrationViewModelProtocol>: View 
         guard let text = string[safe: index] else { return "" }
         
         return text
+    }
+}
+
+/// Портретная карточка для праздничного экрана; обычные аватары чатов остаются круглыми.
+private struct MatchPortraitCard: View {
+    let viewModel: MatchAvatarViewModel
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 28, style: .continuous)
+            .fill(AppTheme.Colors.surfaceMuted)
+            .overlay {
+                CachedPhotoView(url: viewModel.photoURL) { initial }
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .stroke(AppTheme.Colors.secondaryAccent, lineWidth: 3)
+            }
+            .frame(width: 150, height: 195)
+            .shadow(color: Color.black.opacity(0.24), radius: 14, y: 8)
+            .accessibilityHidden(true)
+    }
+
+    private var initial: some View {
+        Text(String(viewModel.name.prefix(1)).uppercased())
+            .font(.system(size: 44, weight: .bold, design: .rounded))
+            .foregroundStyle(AppTheme.Colors.textSecondary)
     }
 }
 
@@ -232,7 +259,7 @@ private struct MatchCelebrationDecor: View {
     private func makeEllipses(with color: Color, count: Int = 3) -> some View {
         
         HStack(spacing: -25) {
-            ForEach(0..<count) { _ in
+            ForEach(0..<count, id: \.self) { _ in
                 Ellipse()
                     .fill(color)
                     .frame(width: 65, height: 140)
