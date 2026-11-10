@@ -12,6 +12,17 @@ enum MainTab: Hashable {
     case feed, matches, profile
 }
 
+/// Маршруты внутри вкладки матчей.
+enum MatchesRoute: Hashable {
+    case chat(UUID)
+
+    var matchID: UUID {
+        switch self {
+        case .chat(let id): id
+        }
+    }
+}
+
 /// Маршруты внутри вкладки профиля.
 enum ProfileRoute: Hashable {
     /// Редактирование данных и фотографий профиля.
@@ -30,20 +41,26 @@ final class MainTabRouter {
     /// Выбранная вкладка.
     var selectedTab: MainTab = .feed
     
-    /// Открытые чаты во вкладке «Матчи» (идентификаторы матчей).
-    var matchesPath: [UUID] = []
+    /// Открытые экраны во вкладке «Матчи».
+    var matchesPath: [MatchesRoute] = []
+    /// Матч, чья анкета показана модально поверх чата.
+    var presentedPartnerMatchID: UUID?
     /// Открытые экраны во вкладке «Профиль».
     var profilePath: [ProfileRoute] = []
     
     func openChat(_ matchID: UUID) {
         selectedTab = .matches
-        matchesPath = [matchID]
+        matchesPath = [.chat(matchID)]
+    }
+
+    func openPartnerProfile(_ matchID: UUID) {
+        presentedPartnerMatchID = matchID
     }
 
     /// Закрывает открытый чат, если соответствующего матча больше нет.
     /// - Parameter matchIDs: актуальные идентификаторы матчей пользователя.
     func closeMissingChat(matchIDs: Set<UUID>) {
-        guard let openMatchID = matchesPath.last, !matchIDs.contains(openMatchID) else { return }
+        guard let openMatchID = matchesPath.last?.matchID, !matchIDs.contains(openMatchID) else { return }
         matchesPath = []
     }
 
@@ -60,6 +77,56 @@ final class MainTabRouter {
     /// Открывает экран удаления аккаунта.
     func openDeleteAccount() {
         profilePath.append(.deleteAccount)
+    }
+}
+
+/// Сохраняет модели открывавшихся чатов до удаления матча или выхода из аккаунта.
+@MainActor
+private final class ChatViewModelCache {
+    private var models: [UUID: ChatViewModel] = [:]
+
+    func model(for matchID: UUID, make: () -> ChatViewModel) -> ChatViewModel {
+        if let model = models[matchID] { return model }
+        let model = make()
+        models[matchID] = model
+        return model
+    }
+
+    func remove(_ matchID: UUID) {
+        models[matchID] = nil
+    }
+
+    func retain(matchIDs: Set<UUID>) {
+        models = models.filter { matchIDs.contains($0.key) }
+    }
+
+    func removeAll() {
+        models.removeAll()
+    }
+}
+
+/// Сохраняет уже загруженные анкеты, чтобы sheet не начинала с `.loading` повторно.
+@MainActor
+private final class PartnerProfileViewModelCache {
+    private var models: [UUID: PartnerProfileViewModel] = [:]
+
+    func model(for matchID: UUID, make: () -> PartnerProfileViewModel) -> PartnerProfileViewModel {
+        if let model = models[matchID] { return model }
+        let model = make()
+        models[matchID] = model
+        return model
+    }
+
+    func remove(_ matchID: UUID) {
+        models[matchID] = nil
+    }
+
+    func retain(matchIDs: Set<UUID>) {
+        models = models.filter { matchIDs.contains($0.key) }
+    }
+
+    func removeAll() {
+        models.removeAll()
     }
 }
 
@@ -95,6 +162,9 @@ struct MainTabView: View {
     @State private var editProfileViewModel: EditProfileViewModel
     /// Актуальная версия профиля после редактирования или применения фильтров.
     @State private var currentProfile: CurrentProfileState
+    /// История и черновики чатов, уже открытых в текущей сессии.
+    @State private var chatCache: ChatViewModelCache
+    @State private var partnerProfileCache: PartnerProfileViewModelCache
     /// Показывается ли модальная шторка фильтров.
     @State private var isFilterPresented = false
     
@@ -123,6 +193,8 @@ struct MainTabView: View {
         
         let router = MainTabRouter()
         let store = container.makeMatchesStore()
+        _chatCache = State(initialValue: ChatViewModelCache())
+        _partnerProfileCache = State(initialValue: PartnerProfileViewModelCache())
         _router = State(initialValue: router)
         _matchesStore = State(initialValue: store)
         _matchesViewModel = State(initialValue: container.makeMatchesViewModel(
@@ -154,9 +226,17 @@ struct MainTabView: View {
             Tab("Матчи", systemImage: "heart", value: MainTab.matches) {
                 NavigationStack(path: $router.matchesPath) {
                     MatchesView(viewModel: matchesViewModel)
-                        .navigationDestination(for: UUID.self) { matchID in
-                            chatDestination(for: matchID)
+                        .navigationDestination(for: MatchesRoute.self) { route in
+                            matchesDestination(for: route)
                         }
+                }
+                .toolbarVisibility(router.matchesPath.isEmpty ? .visible : .hidden, for: .tabBar)
+                .sheet(isPresented: partnerProfilePresentation) {
+                    partnerProfileCover
+                        .presentationDetents([.large])
+                        .presentationDragIndicator(.visible)
+                        .presentationCornerRadius(AppTheme.Radius.card)
+                        .presentationBackground(AppTheme.Colors.background)
                 }
             }
             .badge(matchesStore.unreadTotal)
@@ -167,7 +247,7 @@ struct MainTabView: View {
                         viewModel: editProfileViewModel,
                         onEdit: router.openEditProfile,
                         onOpenSettings: router.openSettings,
-                        onSignOut: onSignOut
+                        onSignOut: signOut
                     )
                         .navigationDestination(for: ProfileRoute.self) { route in
                             profileDestination(for: route)
@@ -185,7 +265,10 @@ struct MainTabView: View {
         }
         .onChange(of: matchesStore.matches.map(\.id)) { _, matchIDs in
             guard matchesStore.isLoaded else { return }
-            router.closeMissingChat(matchIDs: Set(matchIDs))
+            let ids = Set(matchIDs)
+            chatCache.retain(matchIDs: ids)
+            partnerProfileCache.retain(matchIDs: ids)
+            router.closeMissingChat(matchIDs: ids)
         }
         .fullScreenCover(item: celebrationBinding) { match in
             CelebrationPresenter { makeCelebrationViewModel(for: match) }
@@ -272,14 +355,39 @@ struct MainTabView: View {
         )
     }
     
-    /// Экран чата для матча из навигации.
-    /// - Parameter matchID: матч диалога.
+    /// Экран маршрута внутри вкладки матчей.
     @ViewBuilder
-    private func chatDestination(for matchID: UUID) -> some View {
-        if let match = matchesStore.matches.first(where: { $0.id == matchID }) {
-            ChatPresenter { makeChatViewModel(for: match) }
-                .id(matchID)
+    private func matchesDestination(for route: MatchesRoute) -> some View {
+        if let match = matchesStore.matches.first(where: { $0.id == route.matchID }) {
+            switch route {
+            case .chat:
+                ChatPresenter(viewModel: cachedChatViewModel(for: match))
+                    .id(match.id)
+            }
         }
+    }
+
+    private var partnerProfilePresentation: Binding<Bool> {
+        Binding(
+            get: { router.presentedPartnerMatchID != nil },
+            set: { if !$0 { router.presentedPartnerMatchID = nil } }
+        )
+    }
+
+    @ViewBuilder
+    private var partnerProfileCover: some View {
+        if let matchID = router.presentedPartnerMatchID,
+           let match = matchesStore.matches.first(where: { $0.id == matchID }) {
+            PartnerProfileView(viewModel: cachedPartnerProfileViewModel(for: match))
+            .id(match.partner.id)
+        }
+    }
+
+    private func cachedChatViewModel(for match: MatchSummary) -> ChatViewModel {
+        let model = chatCache.model(for: match.id) { makeChatViewModel(for: match) }
+        let partnerProfile = cachedPartnerProfileViewModel(for: match)
+        Task { await partnerProfile.load() }
+        return model
     }
     
     /// Собирает модель чата.
@@ -292,10 +400,47 @@ struct MainTabView: View {
             currentUserID: currentProfile.profile.id,
             onRead: { Task { await store.reload() } },
             onBlocked: {
+                chatCache.remove(match.id)
+                partnerProfileCache.remove(match.id)
+                router.presentedPartnerMatchID = nil
                 router.matchesPath = []
                 Task { await store.reload() }
+            },
+            onOpenPartnerProfile: {
+                let partnerProfile = cachedPartnerProfileViewModel(for: match)
+                Task {
+                    await partnerProfile.load()
+                    router.openPartnerProfile(match.id)
+                }
             }
         )
+    }
+
+    private func makePartnerProfileViewModel(for match: MatchSummary) -> PartnerProfileViewModel {
+        container.makePartnerProfileViewModel(
+            partnerID: match.partner.id,
+            fallbackName: match.partner.name,
+            onBlocked: {
+                chatCache.remove(match.id)
+                partnerProfileCache.remove(match.id)
+                router.presentedPartnerMatchID = nil
+                router.matchesPath = []
+                Task { await matchesStore.reload() }
+            }
+        )
+    }
+
+    private func cachedPartnerProfileViewModel(for match: MatchSummary) -> PartnerProfileViewModel {
+        partnerProfileCache.model(for: match.id) {
+            makePartnerProfileViewModel(for: match)
+        }
+    }
+
+    private func signOut() {
+        chatCache.removeAll()
+        partnerProfileCache.removeAll()
+        PhotoImagePipeline.shared.removeAll()
+        onSignOut()
     }
 }
 
@@ -316,13 +461,7 @@ private struct CelebrationPresenter: View {
 
 /// Создаёт модель чата один раз на открытие, чтобы перерисовки не сбрасывали состояние.
 private struct ChatPresenter: View {
-    
-    @State private var viewModel: ChatViewModel
-    
-    /// - Parameter makeViewModel: фабрика модели, вызывается при создании.
-    init(makeViewModel: () -> ChatViewModel) {
-        _viewModel = State(initialValue: makeViewModel())
-    }
+    let viewModel: ChatViewModel
     
     var body: some View {
         ChatView(viewModel: viewModel)

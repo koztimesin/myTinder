@@ -41,17 +41,7 @@ struct MatchAvatarView: View {
     /// Фото, если оно загрузилось, иначе заглушка с первой буквой имени.
     @ViewBuilder
     private var photoContent: some View {
-        if let url = viewModel.photoURL {
-            AsyncImage(url: url) { phase in
-                if case .success(let image) = phase {
-                    image.resizable().scaledToFill()
-                } else {
-                    initial
-                }
-            }
-        } else {
-            initial
-        }
+        CachedPhotoView(url: viewModel.photoURL) { initial }
     }
 
     /// Первая буква имени.

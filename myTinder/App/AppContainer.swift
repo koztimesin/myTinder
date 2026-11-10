@@ -161,7 +161,8 @@ final class AppContainer {
         partner: MatchPartner,
         currentUserID: UUID,
         onRead: @escaping @MainActor () -> Void,
-        onBlocked: @escaping @MainActor () -> Void
+        onBlocked: @escaping @MainActor () -> Void,
+        onOpenPartnerProfile: @escaping @MainActor () -> Void
     ) -> ChatViewModel {
         ChatViewModel(
             matchID: matchID,
@@ -176,7 +177,31 @@ final class AppContainer {
                                          onFinished: onFinished)
             },
             onBlocked: onBlocked,
-            onRead: onRead
+            onRead: onRead,
+            onOpenPartnerProfile: onOpenPartnerProfile
+        )
+    }
+
+    /// Собирает анкету собеседника, открываемую из чата.
+    func makePartnerProfileViewModel(
+        partnerID: UUID,
+        fallbackName: String,
+        onBlocked: @escaping @MainActor () -> Void
+    ) -> PartnerProfileViewModel {
+        PartnerProfileViewModel(
+            partnerID: partnerID,
+            fallbackName: fallbackName,
+            profiles: profileRepository,
+            photoURLProvider: photoURLProvider,
+            moderation: moderationRepository,
+            makeReportViewModel: { onFinished in
+                self.makeReportViewModel(
+                    partnerID: partnerID,
+                    partnerName: fallbackName,
+                    onFinished: onFinished
+                )
+            },
+            onBlocked: onBlocked
         )
     }
     

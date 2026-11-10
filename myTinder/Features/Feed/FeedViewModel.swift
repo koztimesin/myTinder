@@ -263,6 +263,10 @@ final class FeedViewModel {
                 photoURLs[card.id] = urls
             }
         }
+
+        await PhotoImagePipeline.shared.prefetch(
+            pending.flatMap { card in card.photoPaths.compactMap { urlsByPath[$0] } }
+        )
     }
 }
 

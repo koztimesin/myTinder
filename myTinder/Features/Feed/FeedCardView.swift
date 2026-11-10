@@ -27,6 +27,8 @@ struct FeedCardView: View {
     let expansion: CGFloat
     /// Отступ под статус-бар; нужен, когда карточка раскрыта на весь экран.
     let topInset: CGFloat
+    /// Оставлять ли в нижней части место под кнопки решений ленты.
+    let reservesFeedActionSpace: Bool
     
     /// Индекс показанного фото (локальное состояние интерфейса).
     @State private var photoIndex = 0
@@ -40,10 +42,16 @@ struct FeedCardView: View {
     ///   - viewModel: модель карточки.
     ///   - expansion: раскрытие от 0 до 1 (по умолчанию карточка свёрнута).
     ///   - topInset: отступ под статус-бар (по умолчанию 0).
-    init(viewModel: FeedCardViewModel, expansion: CGFloat = 0, topInset: CGFloat = 0) {
+    init(
+        viewModel: FeedCardViewModel,
+        expansion: CGFloat = 0,
+        topInset: CGFloat = 0,
+        reservesFeedActionSpace: Bool = true
+    ) {
         self.viewModel = viewModel
         self.expansion = expansion
         self.topInset = topInset
+        self.reservesFeedActionSpace = reservesFeedActionSpace
     }
     
     var body: some View {
@@ -115,19 +123,8 @@ struct FeedCardView: View {
     /// Текущее фото или заглушка, пока ссылки не получены.
     @ViewBuilder
     private var photo: some View {
-        if let url = currentURL {
-            AsyncImage(url: url) { phase in
-                switch phase {
-                case .success(let image):
-                    image.resizable().scaledToFill()
-                case .failure:
-                    placeholder(systemImage: "photo")
-                default:
-                    placeholder(systemImage: nil)
-                }
-            }
-        } else {
-            placeholder(systemImage: nil)
+        CachedPhotoView(url: currentURL) {
+            placeholder(systemImage: currentURL == nil ? nil : "photo")
         }
     }
     
@@ -215,7 +212,12 @@ struct FeedCardView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, AppTheme.Spacing.m)
             .padding(.top, AppTheme.Spacing.l)
-            .padding(.bottom, AppTheme.Size.likeButton + AppTheme.Spacing.l + AppTheme.Spacing.m + AppTheme.Spacing.s)
+            .padding(
+                .bottom,
+                reservesFeedActionSpace
+                    ? AppTheme.Size.likeButton + AppTheme.Spacing.l + AppTheme.Spacing.m + AppTheme.Spacing.s
+                    : AppTheme.Spacing.l
+            )
         }
         .background(AppTheme.Colors.background, in: shape)
         .clipShape(shape)

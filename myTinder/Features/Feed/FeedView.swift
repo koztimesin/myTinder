@@ -165,16 +165,12 @@ struct FeedView<ViewModel: FeedViewModelProtocol>: View {
             .accessibilityLabel("Открыть фильтры")
 
             Button(action: onOpenProfile) {
-                AsyncImage(url: profilePhotoURL) { phase in
-                    if case .success(let image) = phase {
-                        image.resizable().scaledToFill()
-                    } else {
-                        AppTheme.Colors.surfaceMuted
-                            .overlay {
-                                Image(systemName: "person.fill")
-                                    .foregroundStyle(AppTheme.Colors.secondaryAccent)
-                            }
-                    }
+                CachedPhotoView(url: profilePhotoURL) {
+                    AppTheme.Colors.surfaceMuted
+                        .overlay {
+                            Image(systemName: "person.fill")
+                                .foregroundStyle(AppTheme.Colors.secondaryAccent)
+                        }
                 }
                 .frame(width: AppTheme.Size.minTapTarget, height: AppTheme.Size.minTapTarget)
                 .clipShape(Circle())

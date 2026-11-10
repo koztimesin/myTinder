@@ -48,6 +48,7 @@ struct ProfileChanges: Sendable {
 protocol ProfileRepositoryProtocol: Sendable {
     
     func fetchMyProfile() async throws -> Profile?
+    func fetchProfile(id: UUID) async throws -> Profile?
     func create(_ new: NewProfile) async throws -> Profile
     func update(_ changes: ProfileChanges) async throws -> Profile
 }

@@ -64,15 +64,10 @@ struct ProfileOverviewView<ViewModel: EditProfileViewModelProtocol>: View {
 
     private var profileHeader: some View {
         VStack(spacing: AppTheme.Spacing.m) {
-            AsyncImage(url: viewModel.mainPhotoURL) { phase in
-                switch phase {
-                case .success(let image):
-                    image.resizable().scaledToFill()
-                case .failure:
+            CachedPhotoView(url: viewModel.mainPhotoURL) {
+                ZStack {
                     placeholder
-                default:
-                    ZStack {
-                        placeholder
+                    if viewModel.mainPhotoURL != nil {
                         ProgressView().tint(AppTheme.Colors.accent)
                     }
                 }

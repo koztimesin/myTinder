@@ -52,6 +52,8 @@ protocol ChatViewModelProtocol: AnyObject, Observable {
     /// Сообщает об изменении активности приложения.
     /// - Parameter isActive: `true`, когда приложение на переднем плане.
     func sceneDidChange(isActive: Bool) async
+    /// Открывает полную анкету собеседника.
+    func openPartnerProfile()
     /// Открывает шторку жалобы.
     func openReport()
     /// Показывает подтверждение блокировки.

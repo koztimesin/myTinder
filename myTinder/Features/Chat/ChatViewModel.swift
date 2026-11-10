@@ -69,6 +69,7 @@ final class ChatViewModel {
     private let repository: ChatRepositoryProtocol
     private let photoURLProvider: PhotoURLProviderProtocol
     private let onRead: @MainActor () -> Void
+    private let onOpenPartnerProfile: @MainActor () -> Void
 
     /// Сообщения в порядке времени.
     private var entries: [ChatEntry] = []
@@ -109,7 +110,8 @@ final class ChatViewModel {
         moderation: ModerationRepositoryProtocol,
         makeReportViewModel: @escaping @MainActor (_ onFinished: @escaping @MainActor (_ didBlock: Bool) -> Void) -> ReportViewModel,
         onBlocked: @escaping @MainActor () -> Void,
-        onRead: @escaping @MainActor () -> Void
+        onRead: @escaping @MainActor () -> Void,
+        onOpenPartnerProfile: @escaping @MainActor () -> Void
     ) {
         self.matchID = matchID
         self.partner = partner
@@ -120,6 +122,7 @@ final class ChatViewModel {
         self.makeReportViewModel = makeReportViewModel
         self.onBlocked = onBlocked
         self.onRead = onRead
+        self.onOpenPartnerProfile = onOpenPartnerProfile
     }
 
     // MARK: - Загрузка и слияние
@@ -347,7 +350,9 @@ extension ChatViewModel: ChatViewModelProtocol {
     }
 
     func run() async {
-        await loadLatest()
+        if !hasLoaded {
+            await loadLatest()
+        }
 
         while !Task.isCancelled {
 
@@ -387,10 +392,14 @@ extension ChatViewModel: ChatViewModelProtocol {
     }
 
     func loadPhotos() async {
-        guard let path = partner.photoPath else { return }
+        guard partnerPhotoURL == nil, let path = partner.photoPath else { return }
 
         let urls = await photoURLProvider.urls(for: [path])
         partnerPhotoURL = urls[path]
+    }
+
+    func openPartnerProfile() {
+        onOpenPartnerProfile()
     }
 
     func sceneDidChange(isActive: Bool) async {
