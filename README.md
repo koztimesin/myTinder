@@ -10,9 +10,23 @@
   <img src="docs/media/matches-screen.png" width="30%" alt="Список матчей и диалогов">
 </p>
 
-- [Свайпы в ленте](docs/media/feed-swiping.mp4)
-- [Появление нового матча](docs/media/match.mp4)
-- [Переписка в realtime-чате](docs/media/chatting.mp4)
+### Свайпы в ленте
+
+<p align="center">
+  <img src="docs/media/feed-swiping.gif" width="300" alt="Свайпы в ленте">
+</p>
+
+### Появление нового матча
+
+<p align="center">
+  <img src="docs/media/match.gif" width="640" alt="Появление нового матча">
+</p>
+
+### Переписка в realtime-чате
+
+<p align="center">
+  <img src="docs/media/chatting.gif" width="640" alt="Переписка в realtime-чате">
+</p>
 
 ## Стек
 
@@ -89,8 +103,6 @@ Edge Function получает ID пользователя только из п�
 
 ## Тесты
 
-Unit-тесты используют Swift Testing и управляемые заглушки репозиториев. Они не обращаются к реальному Supabase и не зависят от сетевых задержек.
-
 Покрыты:
 
 - валидация, создание и редактирование профиля;
@@ -100,19 +112,6 @@ Unit-тесты используют Swift Testing и управляемые з�
 - загрузка, пагинация, realtime и optimistic send в чате;
 - жалобы, блокировка, темы и удаление аккаунта.
 
-Запуск из терминала:
-
-```bash
-xcodebuild \
-  -project myTinder.xcodeproj \
-  -scheme myTinder \
-  -configuration Debug \
-  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2' \
-  -only-testing:myTinderTests \
-  CODE_SIGNING_ALLOWED=NO \
-  test
-```
-
 ## CI
 
 GitHub Actions при каждом pull request и push в `main`:
@@ -121,5 +120,3 @@ GitHub Actions при каждом pull request и push в `main`:
 2. восстанавливает кэш Swift Package Manager;
 3. собирает приложение для iOS Simulator;
 4. запускает только unit-тесты `myTinderTests`.
-
-CI не подключается к Supabase и не требует repository secrets.
