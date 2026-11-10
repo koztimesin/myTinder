@@ -42,7 +42,8 @@ struct ProfilePhotoComposition: View {
             PhotosPicker(
                 selection: $pickerItems,
                 maxSelectionCount: remainingSlots,
-                matching: .images
+                matching: .images,
+                preferredItemEncoding: .current
             ) {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .fill(surfaceColor)

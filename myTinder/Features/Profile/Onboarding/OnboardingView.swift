@@ -228,7 +228,8 @@ struct OnboardingView<ViewModel: OnboardingViewModelProtocol>: View {
                 PhotosPicker(
                     selection: $pickerItems,
                     maxSelectionCount: viewModel.remainingSlots,
-                    matching: .images
+                    matching: .images,
+                    preferredItemEncoding: .current
                 ) {
                     Color.clear
                         .aspectRatio(PhotoTileMetrics.aspectRatio, contentMode: .fit)

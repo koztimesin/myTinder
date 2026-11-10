@@ -87,8 +87,15 @@ final class ProfileRepositoryStub: ProfileRepositoryProtocol {
     var updateResult: Result<Profile, Error> = .failure(TestFailure.expected)
     private(set) var createdProfiles: [NewProfile] = []
     private(set) var updates: [ProfileChanges] = []
+    private(set) var fetchedProfileIDs: [UUID] = []
 
     func fetchMyProfile() async throws -> Profile? {
+        guard !fetchResults.isEmpty else { return nil }
+        return try fetchResults.removeFirst().get()
+    }
+
+    func fetchProfile(id: UUID) async throws -> Profile? {
+        fetchedProfileIDs.append(id)
         guard !fetchResults.isEmpty else { return nil }
         return try fetchResults.removeFirst().get()
     }
@@ -346,7 +353,8 @@ func makeChatViewModel(
     repository: ChatRepositoryStub,
     moderation: ModerationRepositoryStub = ModerationRepositoryStub(),
     onBlocked: @escaping @MainActor () -> Void = {},
-    onRead: @escaping @MainActor () -> Void = {}
+    onRead: @escaping @MainActor () -> Void = {},
+    onOpenPartnerProfile: @escaping @MainActor () -> Void = {}
 ) -> ChatViewModel {
     ChatViewModel(
         matchID: TestFixtures.matchID,
@@ -364,7 +372,8 @@ func makeChatViewModel(
             )
         },
         onBlocked: onBlocked,
-        onRead: onRead
+        onRead: onRead,
+        onOpenPartnerProfile: onOpenPartnerProfile
     )
 }
 

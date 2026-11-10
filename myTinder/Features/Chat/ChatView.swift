@@ -25,7 +25,6 @@ struct ChatView<ViewModel: ChatViewModelProtocol>: View {
                 ToolbarItem(placement: .principal) { header }
                 ToolbarItem(placement: .topBarTrailing) { actionsMenu }
             }
-            .toolbarVisibility(.hidden, for: .tabBar)
             .task { await viewModel.run() }
             .task { await viewModel.loadPhotos() }
             .onChange(of: scenePhase) { _, phase in
@@ -49,14 +48,17 @@ struct ChatView<ViewModel: ChatViewModelProtocol>: View {
             }
     }
     private var header: some View {
-        HStack(spacing: AppTheme.Spacing.s) {
-            MatchAvatarView(viewModel: viewModel.avatar)
-            
-            Text(viewModel.title)
-                .font(.system(.headline, design: .rounded))
-                .foregroundStyle(AppTheme.Colors.textPrimary)
-                .lineLimit(1)
+        Button(action: viewModel.openPartnerProfile) {
+            HStack(spacing: AppTheme.Spacing.s) {
+                MatchAvatarView(viewModel: viewModel.avatar)
+
+                Text(viewModel.title)
+                    .font(.system(.headline, design: .rounded))
+                    .foregroundStyle(AppTheme.Colors.textPrimary)
+                    .lineLimit(1)
+            }
         }
+        .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(viewModel.title))
         .accessibilityAddTraits(.isHeader)
@@ -220,6 +222,7 @@ extension ChatPreviewViewModel: ChatViewModelProtocol {
     func loadOlder() async {}
     func loadPhotos() async {}
     func sceneDidChange(isActive: Bool) async {}
+    func openPartnerProfile() {}
     func openReport() {
         report = ReportPreviewViewModel()
         isReportPresented = true

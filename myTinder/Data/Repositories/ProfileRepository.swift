@@ -43,9 +43,13 @@ extension ProfileRepository: ProfileRepositoryProtocol {
     
     func fetchMyProfile() async throws -> Profile? {
         let uid = try await currentUserID()
+        return try await fetchProfile(id: uid)
+    }
+
+    func fetchProfile(id: UUID) async throws -> Profile? {
         let rows: [ProfileDTO] = try await client
             .from("profiles").select()
-            .eq("id", value: uid)
+            .eq("id", value: id)
             .limit(1)
             .execute().value
         return try rows.first?.toDomain()

@@ -106,18 +106,9 @@ struct PhotoTileView: View {
                 .scaledToFill()
             
         case .remote(let url?):
-            AsyncImage(url: url) { phase in
-                switch phase {
-                case .success(let image):
-                    image
-                        .resizable()
-                        .scaledToFill()
-                case .failure:
-                    Image(systemName: "exclamationmark.triangle")
-                        .foregroundStyle(.secondary)
-                default:
-                    ProgressView()
-                }
+            CachedPhotoView(url: url) {
+                AppTheme.Colors.surfaceMuted
+                    .overlay { ProgressView().tint(AppTheme.Colors.accent) }
             }
             
         case .remote(nil):
