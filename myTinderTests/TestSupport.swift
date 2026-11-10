@@ -69,6 +69,32 @@ enum TestFixtures {
 }
 
 @MainActor
+final class AuthRepositoryStub: AuthRepositoryProtocol {
+    var signUpResults: [Result<SignUpResult, Error>] = []
+    var signInResults: [Result<Void, Error>] = []
+    private(set) var signUpCalls: [(String, String)] = []
+    private(set) var signInCalls: [(String, String)] = []
+
+    func userStream() -> AsyncStream<AppUser?> {
+        AsyncStream { $0.finish() }
+    }
+
+    func signUp(email: String, password: String) async throws -> SignUpResult {
+        signUpCalls.append((email, password))
+        guard !signUpResults.isEmpty else { throw TestFailure.expected }
+        return try signUpResults.removeFirst().get()
+    }
+
+    func signIn(email: String, password: String) async throws {
+        signInCalls.append((email, password))
+        guard !signInResults.isEmpty else { throw TestFailure.expected }
+        try signInResults.removeFirst().get()
+    }
+
+    func signOut() async throws {}
+}
+
+@MainActor
 func eventually(
     attempts: Int = 200,
     _ condition: @MainActor () -> Bool

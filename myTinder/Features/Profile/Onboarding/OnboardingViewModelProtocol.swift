@@ -19,6 +19,10 @@ protocol OnboardingViewModelProtocol: Observable, AnyObject, Sendable {
     var gender: Gender? { get set }
     /// Выбранный вариант «Кого ищете» или `nil`, пока пользователь не выбрал.
     var interest: InterestOption? { get set }
+    /// Текущий шаг пошагового заполнения.
+    var currentStep: OnboardingStep { get }
+    /// Общее количество шагов.
+    var totalSteps: Int { get }
     /// Плитки выбранных фото в порядке показа, первая главная.
     var tiles: [PhotoTileViewModel] { get }
     /// Идёт создание профиля.
@@ -37,9 +41,15 @@ protocol OnboardingViewModelProtocol: Observable, AnyObject, Sendable {
     var isBioTooLong: Bool { get }
     /// Можно ли нажать «Готово».
     var canSubmit: Bool { get }
+    /// Валиден ли текущий шаг для перехода вперёд.
+    var canAdvance: Bool { get }
     
     /// Обрабатывает фото, выбранные в `PhotosPicker`.
     func addPhotos(from items: [PhotosPickerItem]) async
+    /// Переходит к следующему шагу, если текущий заполнен корректно.
+    func advance()
+    /// Возвращает к предыдущему шагу, сохраняя введённые данные.
+    func goBack()
     /// Проверяет форму и создаёт профиль.
     func submit() async
     /// Выходит из аккаунта.
